@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/cedh-pod-randomizer/static/css/main.f55a8dd5.css",
+    "main.js": "/cedh-pod-randomizer/static/js/main.d99b053e.js",
+    "static/js/453.7d1b0514.chunk.js": "/cedh-pod-randomizer/static/js/453.7d1b0514.chunk.js",
+    "index.html": "/cedh-pod-randomizer/index.html",
+    "main.f55a8dd5.css.map": "/cedh-pod-randomizer/static/css/main.f55a8dd5.css.map",
+    "main.d99b053e.js.map": "/cedh-pod-randomizer/static/js/main.d99b053e.js.map",
+    "453.7d1b0514.chunk.js.map": "/cedh-pod-randomizer/static/js/453.7d1b0514.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.f55a8dd5.css",
+    "static/js/main.d99b053e.js"
+  ]
+}
