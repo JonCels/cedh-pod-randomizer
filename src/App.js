@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Grid from '@mui/material/Grid';
 import './App.css';
 import { queryGraphQL } from './api/edhTop16';
+import { DeckVisualSandbox } from './components/DeckVisualSandbox';
 
 function App() {
   const [commanders, setCommanders] = useState([]);
@@ -570,6 +571,7 @@ function App() {
               ))}
             </ul>
           </div>
+          <DeckVisualSandbox />
         </section>
       )}
     </div>
