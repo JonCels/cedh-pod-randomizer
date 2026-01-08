@@ -1,17 +1,17 @@
 import { createCard } from './card.js';
 
 /**
- * Model class for a deck
+ * Model class for a library (stack of cards).
  */
-export class Deck {
+export class Library {
   constructor({ name, commanderId = null, cards = [] } = {}) {
-    this.name = name || 'Untitled Deck';
+    this.name = name || 'Untitled Library';
     this.commanderId = commanderId;
     this.cards = cards.map((c) => (c instanceof Object ? createCard(c) : c));
   }
 
   /**
-   * Return a new Deck instance with cards shuffled (Fisher-Yates).
+   * Return a new Library instance with cards shuffled (Fisher-Yates).
    */
   shuffled() {
     const next = [...this.cards];
@@ -19,19 +19,19 @@ export class Deck {
       const j = Math.floor(Math.random() * (i + 1));
       [next[i], next[j]] = [next[j], next[i]];
     }
-    return new Deck({ name: this.name, commanderId: this.commanderId, cards: next });
+    return new Library({ name: this.name, commanderId: this.commanderId, cards: next });
   }
 
   /**
-   * Draw N cards from the top; returns { hand, deck } without mutating original.
+   * Draw N cards from the top; returns { hand, library } without mutating original.
    */
   draw(count = 1) {
     const n = Math.max(0, Math.min(count, this.cards.length));
     const hand = this.cards.slice(0, n);
-    const deck = this.cards.slice(n);
+    const remainder = this.cards.slice(n);
     return {
       hand,
-      deck: new Deck({ name: this.name, commanderId: this.commanderId, cards: deck }),
+      library: new Library({ name: this.name, commanderId: this.commanderId, cards: remainder }),
     };
   }
 
@@ -48,17 +48,17 @@ export class Deck {
    */
   drawRandom() {
     if (!this.cards.length) {
-      return { hand: [], deck: new Deck({ name: this.name, commanderId: this.commanderId, cards: [] }) };
+      return { hand: [], library: new Library({ name: this.name, commanderId: this.commanderId, cards: [] }) };
     }
     const idx = Math.floor(Math.random() * this.cards.length);
     const hand = [this.cards[idx]];
     const next = this.cards.slice(0, idx).concat(this.cards.slice(idx + 1));
     return {
       hand,
-      deck: new Deck({ name: this.name, commanderId: this.commanderId, cards: next }),
+      library: new Library({ name: this.name, commanderId: this.commanderId, cards: next }),
     };
   }
 }
 
-export const createDeck = (raw = {}) => new Deck(raw);
+export const createLibrary = (raw = {}) => new Library(raw);
 

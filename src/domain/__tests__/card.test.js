@@ -1,4 +1,4 @@
-import { Card, createCard } from '../card';
+import { Card, createCard } from '../card.js';
 
 describe('Card', () => {
   it('creates a card with defaults', () => {
