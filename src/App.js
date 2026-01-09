@@ -324,252 +324,321 @@ function App() {
 
   return (
     <div className="App">
-      <header className="hero">
-        <h1>cEDH Pod Randomizer</h1>
-        <p className="subtitle">
-          Picks three commanders, weighted by meta share, and randomizes seat order.
-        </p>
-
-        <div className="controls">
-          <button
-            type="button"
-            className="primary"
-            onClick={() => rollSelection()}
-            disabled={!commanders.length}
-          >
-            Randomize Pod
-          </button>
-          <p className="note">
-            Click to reroll anytime.
-          </p>
-        </div>
-
-        {isLoading && <p className="status">Loading commanders...</p>}
-        {error && <p className="status error">{error}</p>}
-
-        {!isLoading && !error && (
-          <div className="card selection-card">
-            <div className="card-header">
-              <h2>Random Pod</h2>
-              <small>Data from edhtop16.com</small>
-            </div>
-            <p className="note seat-note">
-              <strong>Your seat this game: {userSeat}</strong>
+      <header className="pod-selection">
+        <Grid container direction="column" spacing={0.25} alignItems="center">
+          <Grid item>
+            <h1>cEDH Pod Randomizer</h1>
+          </Grid>
+          <Grid item>
+            <p className="subtitle">
+              Picks three commanders, weighted by meta share, and randomizes seat order.
             </p>
-            <ul className="selection-list">
-              {selection
-                .map((commander, idx) => ({
-                  seat: seatAssignments[idx] ?? idx + 2,
-                  commander,
-                }))
-                .sort((a, b) => a.seat - b.seat)
-                .map(({ commander, seat }) => {
-                const parts = getNameParts(commander.name);
-                const isPartner = parts.length > 1;
-                const cacheImages = imageCache[commander.name];
-                const primaryImagesRaw =
-                  (Array.isArray(cacheImages) ? cacheImages : null) ||
-                  commander.cardDetail?.cardPreviewImageUrl ||
-                  commander.cardDetail?.imageUrls?.[0] ||
-                  cacheImages;
-                const partnerImages = parts
-                  .map((p) => imageCache[p])
-                  .filter(Boolean)
-                  .flat();
+          </Grid>
 
-                const asArray = (val) =>
-                  Array.isArray(val) ? val : val ? [val] : [];
-                const primaryImages = asArray(primaryImagesRaw);
-                const isDf = isDoubleFaced(commander.name);
+          <Grid item>
+            <Grid container spacing={1.5} justifyContent="center" alignItems="center" className="controls">
+              <Grid item>
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={() => rollSelection()}
+                  disabled={!commanders.length}
+                >
+                  Randomize Pod
+                </button>
+              </Grid>
+              <Grid item>
+                <p className="note">
+                  Click to reroll anytime.
+                </p>
+              </Grid>
+            </Grid>
+          </Grid>
 
-                let images = [];
-                if (isPartner && partnerImages.length) {
-                  images = partnerImages.slice(0, 2);
-                } else if (isDf && primaryImages.length) {
-                  images = primaryImages.slice(0, 2);
-                } else {
-                  images = primaryImages;
-                }
+          {isLoading && (
+            <Grid item>
+              <p className="status">Loading commanders...</p>
+            </Grid>
+          )}
+          {error && (
+            <Grid item>
+              <p className="status error">{error}</p>
+            </Grid>
+          )}
 
-                const hasSplit = (isPartner || isDf) && images.length > 1;
-                const topImage = images[0];
+          {!isLoading && !error && (
+            <Grid container spacing={2} justifyContent="center" alignItems="stretch">
+              <Grid
+                item
+                md={2}
+                lg={3}
+                sx={{ display: { xs: 'none', md: 'block' } }}
+              />
+              <Grid item xs={12} md={8} lg={4}>
+                <div className="card selection-card">
+                  <div className="card-header">
+                    <h2>Random Pod</h2>
+                    <small>Data from edhtop16.com</small>
+                  </div>
 
-                return (
-                  <li
-                    key={`${commander.id || commander.name}-${seat}`}
-                    className={`commander-card${images.length ? ' has-bg' : ''}`}
-                    style={
-                      !hasSplit && topImage
-                        ? {
-                            backgroundImage: `url(${topImage})`,
-                            backgroundPosition: 'center 12.5%',
-                          }
-                        : undefined
-                    }
+                  <p className="note seat-note">
+                    <strong>Your seat this game: {userSeat}</strong>
+                  </p>
+
+                  <Grid
+                    container
+                    component="ul"
+                    className="selection-list"
+                    justifyContent="center"
                   >
-                    {hasSplit && (
-                      <div className="card-art-split">
-                        {images.slice(0, 2).map((url, artIdx) => (
-                          <div
-                            key={`${commander.name}-art-${artIdx}`}
-                            className="card-art"
-                            style={{
-                              backgroundImage: `url(${url})`,
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                    <div className="name">
-                      Seat {seat}: {commander.name}
-                    </div>
-                    <div className="meta chips">
-                      <span>
-                        Meta: {formatMetaSharePct(commander)}
-                      </span>
-                      <span>Entries: {commander.stats?.count ?? 'N/A'}</span>
-                      <span>
-                        Conv:{' '}
-                        {commander.stats?.conversionRate !== undefined
-                          ? commander.stats.conversionRate.toFixed(3)
-                          : 'N/A'}
-                      </span>
-                      <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+                    {selection
+                      .map((commander, idx) => ({
+                        seat: seatAssignments[idx] ?? idx + 2,
+                        commander,
+                      }))
+                      .sort((a, b) => a.seat - b.seat)
+                      .map(({ commander, seat }) => {
+                        const parts = getNameParts(commander.name);
+                        const isPartner = parts.length > 1;
+                        const cacheImages = imageCache[commander.name];
+                        const primaryImagesRaw =
+                          (Array.isArray(cacheImages) ? cacheImages : null) ||
+                          commander.cardDetail?.cardPreviewImageUrl ||
+                          commander.cardDetail?.imageUrls?.[0] ||
+                          cacheImages;
+                        const partnerImages = parts
+                          .map((p) => imageCache[p])
+                          .filter(Boolean)
+                          .flat();
+
+                        const asArray = (val) =>
+                          Array.isArray(val) ? val : val ? [val] : [];
+                        const primaryImages = asArray(primaryImagesRaw);
+                        const isDf = isDoubleFaced(commander.name);
+
+                        let images = [];
+                        if (isPartner && partnerImages.length) {
+                          images = partnerImages.slice(0, 2);
+                        } else if (isDf && primaryImages.length) {
+                          images = primaryImages.slice(0, 2);
+                        } else {
+                          images = primaryImages;
+                        }
+
+                        const hasSplit = (isPartner || isDf) && images.length > 1;
+                        const topImage = images[0];
+
+                        return (
+                          <Grid
+                            item
+                            xs={12}
+                            component="li"
+                            key={`${commander.id || commander.name}-${seat}`}
+                            className={`commander-card${images.length ? ' has-bg' : ''}`}
+                            style={
+                              !hasSplit && topImage
+                                ? {
+                                    backgroundImage: `url(${topImage})`,
+                                    backgroundPosition: 'center 12.5%',
+                                  }
+                                : undefined
+                            }
+                          >
+                            {hasSplit && (
+                              <div className="card-art-split">
+                                {images.slice(0, 2).map((url, artIdx) => (
+                                  <div
+                                    key={`${commander.name}-art-${artIdx}`}
+                                    className="card-art"
+                                    style={{
+                                      backgroundImage: `url(${url})`,
+                                    }}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                            <div className="commander-card__content">
+                              <div className="name">
+                                Seat {seat}: {commander.name}
+                              </div>
+                              <div className="meta chips">
+                                <span>
+                                  Meta: {formatMetaSharePct(commander)}
+                                </span>
+                                <span>Entries: {commander.stats?.count ?? 'N/A'}</span>
+                                <span>
+                                  Conv:{' '}
+                                  {commander.stats?.conversionRate !== undefined
+                                    ? commander.stats.conversionRate.toFixed(3)
+                                    : 'N/A'}
+                                </span>
+                                <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
+                              </div>
+                            </div>
+                          </Grid>
+                        );
+                      })}
+                  </Grid>
+                </div>
+              </Grid>
+              <Grid
+                item
+                md={2}
+                lg={3}
+                sx={{ display: { xs: 'none', md: 'block' } }}
+              />
+            </Grid>
+          )}
+        </Grid>
       </header>
 
       {!isLoading && !error && (
         <section className="pool">
-          <div className="filters">
-            <Grid container spacing={1.25} alignItems="flex-end">
-              <Grid item xs={12} sm={6} md={2.4}>
-                <div className="filter-group">
-                  <label htmlFor="timePeriod">Time period</label>
-                  <select
-                    id="timePeriod"
-                    value={pendingFilters.timePeriod}
-                    onChange={(e) => onFilterChange('timePeriod', e.target.value)}
-                  >
-                    <option value="ONE_MONTH">1 month</option>
-                    <option value="THREE_MONTHS">3 months</option>
-                    <option value="SIX_MONTHS">6 months</option>
-                    <option value="ONE_YEAR">1 year</option>
-                    <option value="ALL_TIME">All time</option>
-                    <option value="POST_BAN">Post ban</option>
-                  </select>
-                </div>
-              </Grid>
+          <Grid container columns={16}justifyContent="center">
+            <Grid
+              item
+              md={1}
+              lg={2}
+              xl={3}
+              sx={{ display: { xs: 'none', md: 'block' } }}
+            />
+            <Grid item xs={16} md={14} lg={12} xl={10}>
+              <div className="filters">
+                <Grid container spacing={1.25} columns={15} alignItems="flex-end">
+                  <Grid item xs={15} sm={7.5} md={3}>
+                    <div className="filter-group">
+                      <label htmlFor="timePeriod">Time period</label>
+                      <select
+                        id="timePeriod"
+                        value={pendingFilters.timePeriod}
+                        onChange={(e) => onFilterChange('timePeriod', e.target.value)}
+                      >
+                        <option value="ONE_MONTH">1 month</option>
+                        <option value="THREE_MONTHS">3 months</option>
+                        <option value="SIX_MONTHS">6 months</option>
+                        <option value="ONE_YEAR">1 year</option>
+                        <option value="ALL_TIME">All time</option>
+                        <option value="POST_BAN">Post ban</option>
+                      </select>
+                    </div>
+                  </Grid>
 
-              <Grid item xs={12} sm={6} md={2.4}>
-                <div className="filter-group">
-                  <label htmlFor="minTournamentSize">Min tournament size</label>
-                  <select
-                    id="minTournamentSize"
-                    value={pendingFilters.minTournamentSize}
-                    onChange={(e) => onFilterChange('minTournamentSize', e.target.value)}
-                  >
-                    <option value="">Any</option>
-                    <option value="16">16+</option>
-                    <option value="30">30+</option>
-                    <option value="50">50+</option>
-                    <option value="100">100+</option>
-                    <option value="250">250+</option>
-                  </select>
-                </div>
-              </Grid>
+                  <Grid item xs={15} sm={7.5} md={3}>
+                    <div className="filter-group">
+                      <label htmlFor="minTournamentSize">Min tournament size</label>
+                      <select
+                        id="minTournamentSize"
+                        value={pendingFilters.minTournamentSize}
+                        onChange={(e) => onFilterChange('minTournamentSize', e.target.value)}
+                      >
+                        <option value="">Any</option>
+                        <option value="16">16+</option>
+                        <option value="30">30+</option>
+                        <option value="50">50+</option>
+                        <option value="100">100+</option>
+                        <option value="250">250+</option>
+                      </select>
+                    </div>
+                  </Grid>
 
-              <Grid item xs={12} sm={6} md={2.4}>
-                <div className="filter-group">
-                  <label htmlFor="minEntries">Min entries</label>
-                  <select
-                    id="minEntries"
-                    value={pendingFilters.minEntries}
-                    onChange={(e) => onFilterChange('minEntries', e.target.value)}
-                  >
-                    <option value="">All Commanders</option>
-                    <option value="20">20+ Entries</option>
-                    <option value="60">60+ Entries</option>
-                    <option value="120">120+ Entries</option>
-                  </select>
-                </div>
-              </Grid>
+                  <Grid item xs={15} sm={7.5} md={3}>
+                    <div className="filter-group">
+                      <label htmlFor="minEntries">Min entries</label>
+                      <select
+                        id="minEntries"
+                        value={pendingFilters.minEntries}
+                        onChange={(e) => onFilterChange('minEntries', e.target.value)}
+                      >
+                        <option value="">All Commanders</option>
+                        <option value="20">20+ Entries</option>
+                        <option value="60">60+ Entries</option>
+                        <option value="120">120+ Entries</option>
+                      </select>
+                    </div>
+                  </Grid>
 
-              <Grid item xs={12} sm={6} md={2.4}>
-                <div className="filter-group">
-                  <label htmlFor="count">Pool size (# commanders)</label>
-                  <select
-                    id="count"
-                    value={pendingFilters.count}
-                    onChange={(e) => onFilterChange('count', e.target.value)}
-                  >
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="50">50</option>
-                    <option value="100">100</option>
-                    <option value="250">250</option>
-                  </select>
-                </div>
-              </Grid>
+                  <Grid item xs={15} sm={7.5} md={3}>
+                    <div className="filter-group">
+                      <label htmlFor="count">Pool size (# commanders)</label>
+                      <select
+                        id="count"
+                        value={pendingFilters.count}
+                        onChange={(e) => onFilterChange('count', e.target.value)}
+                      >
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="250">250</option>
+                      </select>
+                    </div>
+                  </Grid>
 
-              <Grid item xs={12} sm={6} md={2.4}>
-                <div className="filter-actions">
-                  <button
-                    type="button"
-                    className="primary apply-btn"
-                    onClick={applyFilters}
-                    disabled={isLoading}
-                  >
-                    Apply Filters
-                  </button>
+                  <Grid item xs={15} sm={15} md={3}>
+                    <div className="filter-actions">
+                      <button
+                        type="button"
+                        className="primary apply-btn"
+                        onClick={applyFilters}
+                        disabled={isLoading}
+                      >
+                        Apply Filters
+                      </button>
+                    </div>
+                  </Grid>
+                </Grid>
+              </div>
+
+              <div className="card">
+                <div className="card-header">
+                  <h3>Commander Pool</h3>
+                  <small>
+                    Pool size: {filters.count || 50}
+                  </small>
                 </div>
-              </Grid>
+                <p className="helper">Scroll to browse the pool being sampled from.</p>
+                <Grid container component="ul" className="pool-list" spacing={1}>
+                  {commanders.map((commander, idx) => (
+                    <Grid
+                      item
+                      xs={12}
+                      component="li"
+                      key={commander.id || commander.name}
+                      style={{
+                        backgroundImage: colorGradient(commander.colorId),
+                        backgroundColor: '#0b1220',
+                      }}
+                    >
+                      <div className="name">
+                        <span className="pool-rank">{idx + 1}.</span> {commander.name}
+                      </div>
+                      <div className="meta">
+                        <span>
+                          Meta: {formatMetaSharePct(commander)}
+                        </span>
+                        <span>Entries: {commander.stats?.count ?? 'N/A'}</span>
+                        <span>
+                          Conv:{' '}
+                          {commander.stats?.conversionRate !== undefined
+                            ? commander.stats.conversionRate.toFixed(3)
+                            : 'N/A'}
+                        </span>
+                        <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
+                        <span>Color: {commander.colorId}</span>
+                      </div>
+                    </Grid>
+                  ))}
+                </Grid>
+              </div>
             </Grid>
-          </div>
-
-          <div className="card">
-            <div className="card-header">
-              <h3>Commander Pool</h3>
-              <small>
-                Pool size: {filters.count || 50}
-              </small>
-            </div>
-            <p className="helper">Scroll to browse the pool being sampled from.</p>
-            <ul className="pool-list">
-              {commanders.map((commander, idx) => (
-                <li
-                  key={commander.id || commander.name}
-                  style={{
-                    backgroundImage: colorGradient(commander.colorId),
-                    backgroundColor: '#0b1220',
-                  }}
-                >
-                  <div className="name">
-                    <span className="pool-rank">{idx + 1}.</span> {commander.name}
-                  </div>
-                  <div className="meta">
-                    <span>
-                      Meta: {formatMetaSharePct(commander)}
-                    </span>
-                    <span>Entries: {commander.stats?.count ?? 'N/A'}</span>
-                    <span>
-                      Conv:{' '}
-                      {commander.stats?.conversionRate !== undefined
-                        ? commander.stats.conversionRate.toFixed(3)
-                        : 'N/A'}
-                    </span>
-                    <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
-                    <span>Color: {commander.colorId}</span>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </div>
+            <Grid
+              item
+              md={1}
+              lg={2}
+              xl={3}
+              sx={{ display: { xs: 'none', md: 'block' } }}
+            />
+          </Grid>
         </section>
       )}
     </div>

@@ -17,14 +17,14 @@ async function main() {
 
   const url = await rl.question('Paste Moxfield deck URL: ');
   rl.close();
-
+  
   const m = url.match(/\/decks\/([^/]+)/);
   if (!m) {
     console.error('Could not extract deckId from URL. Expected https://www.moxfield.com/decks/<id>');
     return;
   }
   const deckId = m[1];
-
+  
   const userAgent = process.env.MOXFIELD_USER_AGENT || '';
   const apiKey = process.env.MOXFIELD_API_KEY || '';
   const baseUrl = process.env.MOXFIELD_BASE_URL || 'https://api2.moxfield.com/v2';
@@ -33,6 +33,7 @@ async function main() {
     return;
   }
 
+  
   const upstreamUrl = `${baseUrl}/decks/all/${encodeURIComponent(deckId)}`;
   console.log(`Fetching ${upstreamUrl} ...`);
 
