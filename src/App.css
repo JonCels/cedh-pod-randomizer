@@ -140,6 +140,106 @@ body {
   color: #94a3b8;
 }
 
+.user-deck {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.deck-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.deck-actions.inline {
+  justify-content: flex-end;
+}
+
+.deck-url-row input {
+  width: 100%;
+}
+
+.deck-actions.inline button {
+  min-width: 150px;
+}
+
+.deck-actions button {
+  padding: 0.65rem 1rem;
+  border-radius: 10px;
+  border: 1px solid #1f2937;
+  background: #0b1220;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.deck-actions button.primary {
+  background: linear-gradient(135deg, #60a5fa, #a855f7);
+  color: #0b1021;
+  border: none;
+}
+
+.hand-preview ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.hand-preview li {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  padding: 0rem 0rem;
+}
+
+.hand-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.hand-card {
+  position: relative;
+  width: 135px;
+  height: 189px; /* 2.5 x 3.5 ratio */
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #1f2937;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+  flex: 0 0 135px;
+}
+
+.hand-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+}
+
+.hand-card__placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+  padding: 0.5rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.hand-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
 .selection-list,
 .pool-list {
   list-style: none;
@@ -237,6 +337,12 @@ body {
   font-weight: 700;
   margin-bottom: 0.5rem;
   font-size: 1.15rem;
+}
+
+/* Ensure user deck commander display uses the same sizing as other pod cards */
+.user-deck .name {
+  font-size: 1.15rem;
+  font-weight: 700;
 }
 
 .pool-rank {

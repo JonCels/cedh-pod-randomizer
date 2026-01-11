@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Grid from '@mui/material/Grid';
 import './App.css';
 import { queryGraphQL } from './api/edhTop16';
+import { loadMoxfieldDeckFromUrl } from './domain/moxfieldParser';
 
 function App() {
   const [commanders, setCommanders] = useState([]);
@@ -23,6 +24,13 @@ function App() {
     minEntries: '',
     count: 50,
   });
+  const [deckUrl, setDeckUrl] = useState('');
+  const [deckLoading, setDeckLoading] = useState(false);
+  const [deckError, setDeckError] = useState(null);
+  const [deckStatus, setDeckStatus] = useState('');
+  const [userLibrary, setUserLibrary] = useState(null);
+  const [userHand, setUserHand] = useState([]);
+  const [userCommanders, setUserCommanders] = useState([]);
 
   const getNameParts = (name) => {
     if (!name) return [];
@@ -94,64 +102,64 @@ function App() {
       });
       if (!namesToFetch.size) return;
 
-        const fetchImage = async (name) => {
-          if (!name) return [];
-          // For double-faced names, keep the whole string; Scryfall fuzzy handles it.
-          const isDf = isDoubleFaced(name);
-          const queryName = isDf ? name : name.split('/')[0].trim();
-          const query = encodeURIComponent(queryName);
-        try {
-          const res = await fetch(
-            `https://api.scryfall.com/cards/named?fuzzy=${query}`
-          );
-            if (!res.ok) return [];
-            const card = await res.json();
-            // Collect up to two faces for double-faced cards; otherwise take primary.
-            const faceImages =
-              (card?.card_faces || [])
-                .map(
-                  (face) =>
-                    face?.image_uris?.art_crop ||
-                    face?.image_uris?.normal ||
-                    face?.image_uris?.large ||
-                    null
-                )
-                .filter(Boolean) || [];
-            const primaryImage =
-              card?.image_uris?.art_crop ||
-              card?.image_uris?.normal ||
-              card?.image_uris?.large ||
-              null;
-
-            if (isDf && faceImages.length) return faceImages.slice(0, 2);
-            if (faceImages.length) return [faceImages[0]];
-            if (primaryImage) return [primaryImage];
-            return [];
-        } catch (e) {
-          // eslint-disable-next-line no-console
-          console.warn('Scryfall fetch failed for', name, e);
-            return [];
-        }
-      };
-
       const results = await Promise.all(
         Array.from(namesToFetch).map(async (name) => {
-          const urls = await fetchImage(name);
+          const urls = await fetchImageUrls(name);
           return { name, urls };
         })
       );
 
       setImageCache((prev) => {
         const next = { ...prev };
-          results.forEach(({ name, urls }) => {
-            if (name && urls?.length) next[name] = urls;
-          });
+        results.forEach(({ name, urls }) => {
+          if (name && urls?.length) next[name] = urls;
+        });
         return next;
       });
     };
 
     fetchMissingImages();
   }, [selection, imageCache]);
+
+  useEffect(() => {
+    const fetchUserCommanderImages = async () => {
+      const names = userCommanders.map((c) => c?.name).filter(Boolean);
+      const namesToFetch = names.filter((n) => !imageCache[n]);
+      if (!namesToFetch.length) return;
+      const results = await Promise.all(
+        namesToFetch.map(async (name) => {
+          const urls = await fetchImageUrls(name);
+          return { name, urls };
+        })
+      );
+      setImageCache((prev) => {
+        const next = { ...prev };
+        results.forEach(({ name, urls }) => {
+          if (name && urls?.length) next[name] = urls;
+        });
+        return next;
+      });
+    };
+    fetchUserCommanderImages();
+  }, [userCommanders, imageCache]);
+
+  useEffect(() => {
+    const fetchHandImages = async () => {
+      const names = userHand.map((c) => c?.name).filter(Boolean);
+      const toFetch = names.filter((n) => !imageCache[n]);
+      if (!toFetch.length) return;
+      const batch = await fetchHandBatchImages(toFetch);
+      const results = Object.entries(batch).map(([name, urls]) => ({ name, urls }));
+      setImageCache((prev) => {
+        const next = { ...prev };
+        results.forEach(({ name, urls }) => {
+          if (name && urls?.length) next[name] = urls;
+        });
+        return next;
+      });
+    };
+    fetchHandImages();
+  }, [userHand, imageCache]);
 
   const loadCommanders = async (activeFilters = filters) => {
     setIsLoading(true);
@@ -322,6 +330,165 @@ function App() {
     return stops.join(', ') || 'radial-gradient(circle at 20% 20%, rgba(180, 190, 200, 0.15), transparent 45%)';
   };
 
+  const fetchImageUrls = async (name) => {
+    if (!name) return [];
+    const isDf = isDoubleFaced(name);
+    const queryName = isDf ? name : name.split('/')[0].trim();
+    const query = encodeURIComponent(queryName);
+    try {
+      const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${query}`);
+      if (!res.ok) return [];
+      const card = await res.json();
+      const faceImages =
+        (card?.card_faces || [])
+          .map(
+            (face) =>
+              face?.image_uris?.art_crop ||
+              face?.image_uris?.normal ||
+              face?.image_uris?.large ||
+              null
+          )
+          .filter(Boolean) || [];
+      const primaryImage =
+        card?.image_uris?.art_crop ||
+        card?.image_uris?.normal ||
+        card?.image_uris?.large ||
+        null;
+
+      if (isDf && faceImages.length) return faceImages.slice(0, 2);
+      if (faceImages.length) return [faceImages[0]];
+      if (primaryImage) return [primaryImage];
+      return [];
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Scryfall fetch failed for', name, e);
+      return [];
+    }
+  };
+
+  const fetchHandImageUrls = async (name) => {
+    if (!name) return [];
+    const query = encodeURIComponent(name.split('/')[0].trim());
+    try {
+      const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${query}`);
+      if (!res.ok) return [];
+      const card = await res.json();
+      const faceImages =
+        (card?.card_faces || [])
+          .map(
+            (face) =>
+              face?.image_uris?.small ||
+              face?.image_uris?.normal ||
+              face?.image_uris?.large ||
+              face?.image_uris?.art_crop ||
+              null
+          )
+          .filter(Boolean) || [];
+      const primaryImage =
+        card?.image_uris?.small ||
+        card?.image_uris?.normal ||
+        card?.image_uris?.large ||
+        card?.image_uris?.art_crop ||
+        null;
+
+      if (faceImages.length) return [faceImages[0]];
+      if (primaryImage) return [primaryImage];
+      return [];
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Scryfall hand fetch failed for', name, e);
+      return [];
+    }
+  };
+
+  const fetchHandBatchImages = async (names = []) => {
+    const unique = Array.from(new Set(names.filter(Boolean)));
+    if (!unique.length) return {};
+    try {
+      const body = {
+        identifiers: unique.map((n) => ({ name: n })),
+      };
+      const res = await fetch('https://api.scryfall.com/cards/collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) return {};
+      const data = await res.json();
+      const map = {};
+      (data?.data || []).forEach((card, idx) => {
+        const name = unique[idx] || card?.name;
+        if (!name) return;
+        const faceImages =
+          (card?.card_faces || [])
+            .map(
+              (face) =>
+                face?.image_uris?.small ||
+                face?.image_uris?.normal ||
+                face?.image_uris?.large ||
+                face?.image_uris?.art_crop ||
+                null
+            )
+            .filter(Boolean) || [];
+        const primaryImage =
+          card?.image_uris?.small ||
+          card?.image_uris?.normal ||
+          card?.image_uris?.large ||
+          card?.image_uris?.art_crop ||
+          null;
+        const urls = faceImages.length ? [faceImages[0]] : primaryImage ? [primaryImage] : [];
+        if (urls.length) map[name] = urls;
+      });
+      return map;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Scryfall batch hand fetch failed', e);
+      return {};
+    }
+  };
+
+  const prefetchHandImages = async (cards = []) => {
+    const names = cards.map((c) => c?.name).filter(Boolean);
+    const toFetch = names.filter((n) => !imageCache[n]);
+    if (!toFetch.length) return;
+    const batch = await fetchHandBatchImages(toFetch);
+    if (!batch || !Object.keys(batch).length) return;
+    setImageCache((prev) => {
+      const next = { ...prev };
+      Object.entries(batch).forEach(([name, urls]) => {
+        if (name && urls?.length) next[name] = urls;
+      });
+      return next;
+    });
+  };
+
+  const loadMoxfieldDeck = async () => {
+    setDeckLoading(true);
+    setDeckError(null);
+    setDeckStatus('Loading deck...');
+    try {
+      const { library, commanders } = await loadMoxfieldDeckFromUrl(deckUrl);
+      setUserLibrary(library);
+      setUserCommanders(commanders);
+      setDeckStatus(`Loaded ${library.cards.length} cards. Click Draw 7 to see your hand.`);
+      setUserHand([]);
+      await prefetchHandImages(library.cards);
+    } catch (err) {
+      setDeckError(err.message || 'Failed to load deck');
+      setUserLibrary(null);
+      setUserHand([]);
+      setDeckStatus('');
+    } finally {
+      setDeckLoading(false);
+    }
+  };
+
+  const drawUserHand = () => {
+    if (!userLibrary) return;
+    const opening = userLibrary.drawOpeningHand(7);
+    setUserHand(opening.hand);
+  };
+
   return (
     <div className="App">
       <header className="pod-selection">
@@ -367,14 +534,19 @@ function App() {
           )}
 
           {!isLoading && !error && (
-            <Grid container spacing={2} justifyContent="center" alignItems="stretch">
+
+            <Grid container spacing={2} columns={16} alignItems="stretch">
               <Grid
                 item
-                md={2}
+                xs={0}
+                sm={0}
+                md={3}
                 lg={3}
+                xl={3}
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
-              <Grid item xs={12} md={8} lg={4}>
+
+              <Grid item xs={16} sm={16} md={5} lg={5} xl={5}>
                 <div className="card selection-card">
                   <div className="card-header">
                     <h2>Random Pod</h2>
@@ -481,10 +653,146 @@ function App() {
                   </Grid>
                 </div>
               </Grid>
+              <Grid item xs={16} sm={16} md={5} lg={6} xl={5}>
+                <div className="card user-deck">
+                  <div className="card-header">
+                    <h2>Your Deck</h2>
+                    <small>Paste a Moxfield deck link</small>
+                  </div>
+                  <Grid container spacing={1} alignItems="center" className="deck-url-row">
+                    <Grid item xs={12} sm={8}>
+                      <input
+                        id="deckUrl"
+                        type="url"
+                        value={deckUrl}
+                        onChange={(e) => setDeckUrl(e.target.value)}
+                        placeholder="https://www.moxfield.com/decks/..."
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={4}>
+                      <div className="deck-actions inline">
+                        <button
+                          type="button"
+                          className="primary"
+                          onClick={loadMoxfieldDeck}
+                          disabled={deckLoading || !deckUrl}
+                        >
+                          {deckLoading ? 'Loading...' : 'Load Decklist'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={drawUserHand}
+                          disabled={!userLibrary}
+                        >
+                          {userHand.length ? 'Mulligan' : 'Draw Opening 7'}
+                        </button>
+                      </div>
+                    </Grid>
+                  </Grid>
+                  {userCommanders.length > 0 && (
+                    <Grid container component="ul" className="selection-list" justifyContent="center">
+                      {(() => {
+                        const asArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
+                        const paired = userCommanders.length > 1
+                          ? [{
+                              name: `${userCommanders[0].name} / ${userCommanders[1].name}`,
+                              parts: [userCommanders[0].name, userCommanders[1].name],
+                            }]
+                          : userCommanders.map((c) => ({ name: c.name, parts: [c.name] }));
+
+                        return paired.map((entry) => {
+                          const images = entry.parts
+                            .map((p) => asArray(imageCache[p]))
+                            .flat()
+                            .slice(0, 2);
+                          const hasSplit = images.length > 1;
+                          const topImage = images[0];
+
+                          return (
+                            <Grid
+                              item
+                              xs={12}
+                              component="li"
+                              key={`user-commander-${entry.name}`}
+                              className={`commander-card${images.length ? ' has-bg' : ''}`}
+                              style={
+                                !hasSplit && topImage
+                                  ? {
+                                      backgroundImage: `url(${topImage})`,
+                                      backgroundPosition: 'center 12.5%',
+                                    }
+                                  : undefined
+                              }
+                            >
+                              {hasSplit && (
+                                <div className="card-art-split">
+                                  {images.slice(0, 2).map((url, artIdx) => (
+                                    <div
+                                      key={`${entry.name}-art-${artIdx}`}
+                                      className="card-art"
+                                      style={{
+                                        backgroundImage: `url(${url})`,
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                              <div className="commander-card__content">
+                                <div className="name">{entry.name}</div>
+                              </div>
+                            </Grid>
+                          );
+                        });
+                      })()}
+                    </Grid>
+                  )}
+                  {deckError && <p className="status error">{deckError}</p>}
+                  {deckStatus && <p className="status">{deckStatus}</p>}
+                  {userHand.length > 0 && (
+                    <div className="hand-preview">
+                      <p className="note">Opening hand:</p>
+                      <Grid container spacing={0} component="ul" className="hand-grid">
+                        {userHand.map((card, idx) => {
+                          const cached = imageCache[card.name];
+                          const images = Array.isArray(cached) ? cached : cached ? [cached] : [];
+                          const topImage = images[0];
+                          // split 4 on top row, 3 on bottom; use xs=6 to force 2 cols on mobile, md for desktop layout
+                          return (
+                            <Grid
+                              item
+                              xs="auto"
+                              sm="auto"
+                              md="auto"
+                              lg="auto"
+                              component="li"
+                              key={card.id || `${card.name}-${idx}`}
+                              className="hand-card"
+                            >
+                              {topImage ? (
+                                <img
+                                  className="hand-card__img"
+                                  src={topImage}
+                                  alt={card.name}
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="hand-card__placeholder">{card.name}</div>
+                              )}
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+                    </div>
+                  )}
+                </div>
+              </Grid>
               <Grid
                 item
-                md={2}
+                xs={0}
+                sm={0}
+                md={3}
                 lg={3}
+                xl={3}
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
             </Grid>
