@@ -1,6 +1,7 @@
 export const config = {
   api: {
-    bodyParser: false, // we stream bodies through
+    bodyParser: false,
+    externalResolver: true,
   },
 };
 
@@ -37,11 +38,12 @@ export default async function handler(req, res) {
 
   try {
     const upstream = await fetch(targetUrl, init);
-    const text = await upstream.text();
     res.status(upstream.status);
-    const contentType = upstream.headers.get('content-type');
-    if (contentType) res.setHeader('content-type', contentType);
-    res.send(text);
+    upstream.headers.forEach((val, key) => {
+      res.setHeader(key, val);
+    });
+    // Pipe the upstream response directly
+    upstream.body.pipe(res);
   } catch (e) {
     res.status(500).json({ error: 'Proxy failed', detail: e?.message || 'unknown' });
   }
