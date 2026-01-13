@@ -653,7 +653,7 @@ function App() {
                   </Grid>
                 </div>
               </Grid>
-              <Grid item xs={16} sm={16} md={5} lg={6} xl={5}>
+              <Grid item xs={16} sm={16} md={5} lg={5} xl={5}>
                 <div className="card user-deck">
                   <div className="card-header">
                     <h2>Your Deck</h2>
