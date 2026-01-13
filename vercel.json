@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    {
+      "source": "/moxapi/:path*",
+      "destination": "/api/moxapi/:path*"
+    }
+  ]
+}
+
