@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/moxapi/:path*",
-      "destination": "/api/moxapi/:path*"
+      "source": "/moxapi/(.*)",
+      "destination": "/api/moxapi/$1"
     }
   ]
 }
