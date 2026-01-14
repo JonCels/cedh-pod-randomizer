@@ -22,7 +22,12 @@ export default async function handler(req, res) {
   }
 
   const qs = new URLSearchParams(rest).toString();
-  const url = `${upstreamBase}/${pathStr}${qs ? `?${qs}` : ''}`;
+  const base = upstreamBase.replace(/\/+$/, '');
+  let cleanPath = pathStr.replace(/^\/+/, '');
+  if (base.endsWith('/v2') && cleanPath.startsWith('v2/')) {
+    cleanPath = cleanPath.slice(3); // drop leading "v2" to avoid double v2/v2
+  }
+  const url = `${base}/${cleanPath}${qs ? `?${qs}` : ''}`;
 
   const headers = {
     accept: 'application/json',
