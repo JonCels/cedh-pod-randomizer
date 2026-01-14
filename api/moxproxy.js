@@ -14,15 +14,15 @@ const readBody = async (req) => {
 };
 
 export default async function handler(req, res) {
-  const { path } = req.query;
-  if (!path) {
+  const { path, debug, ...rest } = req.query;
+  const pathStr = Array.isArray(path) ? path.join('/') : path;
+  if (!pathStr) {
     res.status(400).json({ error: 'Missing path. Example: /api/moxproxy?path=v2/decks/all/<id>' });
     return;
   }
 
-  const qsIndex = req.url.indexOf('&');
-  const qs = qsIndex >= 0 ? req.url.slice(qsIndex).replace(/^&/, '?') : '';
-  const url = `${upstreamBase}/${path}${qs}`;
+  const qs = new URLSearchParams(rest).toString();
+  const url = `${upstreamBase}/${pathStr}${qs ? `?${qs}` : ''}`;
 
   const headers = {
     accept: 'application/json',
@@ -33,7 +33,7 @@ export default async function handler(req, res) {
   if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
 
   // Debug: append debug=1 to see target and headers.
-  if (req.query.debug === '1') {
+  if (debug === '1') {
     res.status(200).json({ target: url, method: req.method, headers });
     return;
   }
