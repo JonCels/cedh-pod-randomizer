@@ -6,6 +6,10 @@ export const config = {
   
   export default async function handler(req, res) {
     const path = (req.query.path || []).join('/');
+  if (!path) {
+    res.status(400).json({ error: 'Missing path' });
+    return;
+  }
     const qsIndex = req.url.indexOf('?');
     const qs = qsIndex >= 0 ? req.url.slice(qsIndex) : '';
     const url = `${upstreamBase}/${path}${qs}`;
