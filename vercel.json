@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/moxapi/(.*)",
-      "destination": "/api/moxapi/$1"
+      "destination": "/api/moxproxy?path=$1"
     }
   ]
 }
