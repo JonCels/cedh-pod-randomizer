@@ -33,7 +33,11 @@ export default async function handler(req, res) {
     accept: 'application/json',
     'user-agent': process.env.MOXFIELD_USER_AGENT || 'mtg-pod-randomizer/1.0',
   };
-  if (process.env.MOXFIELD_API_KEY) headers['x-moxfield-key'] = process.env.MOXFIELD_API_KEY;
+  const keyHeader =
+    process.env.MOXFIELD_KEY_HEADER ||
+    process.env.NEXT_PUBLIC_MOXFIELD_KEY_HEADER ||
+    'x-moxfield-key';
+  if (process.env.MOXFIELD_API_KEY) headers[keyHeader] = process.env.MOXFIELD_API_KEY;
   if (process.env.MOXFIELD_COOKIE) headers.cookie = process.env.MOXFIELD_COOKIE;
   if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
 
