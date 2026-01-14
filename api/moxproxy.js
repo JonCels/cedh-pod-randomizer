@@ -64,7 +64,12 @@ export default async function handler(req, res) {
       body: text?.slice(0, 500) || '',
     });
   } catch (e) {
-    res.status(500).json({ error: 'Proxy failed', detail: e?.message || 'unknown' });
+    res.status(500).json({
+      error: 'Proxy failed',
+      detail: e?.message || 'unknown',
+      target: url,
+      stack: e?.stack || undefined,
+    });
   }
 }
 
