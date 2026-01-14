@@ -39,9 +39,23 @@ export default async function handler(req, res) {
 
   try {
     const upstream = await fetch(url, init);
-    res.status(upstream.status);
-    upstream.headers.forEach((v, k) => res.setHeader(k, v));
-    upstream.body.pipe(res);
+    if (upstream.ok) {
+      res.status(upstream.status);
+      upstream.headers.forEach((v, k) => res.setHeader(k, v));
+      upstream.body.pipe(res);
+      return;
+    }
+
+    // For non-2xx, surface details to help diagnose.
+    const text = await upstream.text();
+    res
+      .status(upstream.status)
+      .json({
+        error: 'Upstream error',
+        status: upstream.status,
+        statusText: upstream.statusText,
+        body: text?.slice(0, 500) || '',
+      });
   } catch (e) {
     res.status(500).json({ error: 'Proxy failed', detail: e?.message || 'unknown' });
   }
