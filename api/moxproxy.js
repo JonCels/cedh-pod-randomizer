@@ -33,6 +33,7 @@ export default async function handler(req, res) {
     accept: 'application/json',
     'content-type': 'application/json',
     'user-agent': process.env.MOXFIELD_USER_AGENT || 'mtg-pod-randomizer/1.0',
+    'accept-encoding': 'identity',
   };
   if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
 
@@ -45,7 +46,13 @@ export default async function handler(req, res) {
     const upstream = await fetch(url, init);
     const buf = Buffer.from(await upstream.arrayBuffer());
     res.status(upstream.status);
-    upstream.headers.forEach((v, k) => res.setHeader(k, v));
+    const forwarded = {};
+    upstream.headers.forEach((v, k) => {
+      forwarded[k.toLowerCase()] = v;
+    });
+    delete forwarded['content-encoding'];
+    delete forwarded['content-length'];
+    Object.entries(forwarded).forEach(([k, v]) => res.setHeader(k, v));
     res.send(buf);
   } catch (e) {
     res.status(500).json({
