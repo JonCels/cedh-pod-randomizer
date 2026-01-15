@@ -16,14 +16,19 @@ const readBody = async (req) => {
 export default async function handler(req, res) {
   const { path, ...rest } = req.query;
   const pathStr = Array.isArray(path) ? path.join('/') : path;
-  if (!pathStr) {
+
+  // Also support /api/moxproxy/v2/decks/all/<id> (path segments) in addition to ?path=...
+  const urlPath = (req.url.split('?')[0] || '').replace(/^\/api\/moxproxy\/?/, '');
+  const effectivePath = pathStr || urlPath;
+
+  if (!effectivePath) {
     res.status(400).json({ error: 'Missing path. Example: /api/moxproxy?path=v2/decks/all/<id>' });
     return;
   }
 
   const qs = new URLSearchParams(rest).toString();
   const base = upstreamBase.replace(/\/+$/, '');
-  let cleanPath = pathStr.replace(/^\/+/, '');
+  let cleanPath = effectivePath.replace(/^\/+/, '');
   if (base.endsWith('/v2') && cleanPath.startsWith('v2/')) {
     cleanPath = cleanPath.slice(3); // drop leading "v2" to avoid double v2/v2
   }
