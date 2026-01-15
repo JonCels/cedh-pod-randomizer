@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Grid from '@mui/material/Grid';
 import './App.css';
 import { queryGraphQL } from './api/edhTop16';
@@ -39,7 +39,7 @@ function App() {
   const [userHand, setUserHand] = useState([]);
   const [userCommanders, setUserCommanders] = useState([]);
 
-  const getNameParts = useCallback((name) => {
+  const getNameParts = (name) => {
     if (!name) return [];
     // Treat "//" as a single commander (double-faced), not partners.
     if (name.includes('//')) return [name.trim()];
@@ -47,9 +47,9 @@ function App() {
       .split('/')
       .map((part) => part.trim())
       .filter(Boolean);
-  }, []);
+  };
 
-  const isDoubleFaced = useCallback((name) => name?.includes('//'), []);
+  const isDoubleFaced = (name) => name?.includes('//');
 
   const weightedSampleWithReplacement = (items, count, getWeight) => {
     if (!items.length || count <= 0) return [];
@@ -126,7 +126,7 @@ function App() {
     };
 
     fetchMissingImages();
-  }, [selection, imageCache, fetchImageUrls, getNameParts, isDoubleFaced]);
+  }, [selection, imageCache]);
 
   useEffect(() => {
     const fetchUserCommanderImages = async () => {
@@ -148,7 +148,7 @@ function App() {
       });
     };
     fetchUserCommanderImages();
-  }, [userCommanders, imageCache, fetchImageUrls]);
+  }, [userCommanders, imageCache]);
 
   useEffect(() => {
     const fetchHandImages = async () => {
@@ -166,7 +166,7 @@ function App() {
       });
     };
     fetchHandImages();
-  }, [userHand, imageCache, fetchHandBatchImages]);
+  }, [userHand, imageCache]);
 
   const loadCommanders = async (activeFilters = filters) => {
     setIsLoading(true);
@@ -337,7 +337,7 @@ function App() {
     return stops.join(', ') || 'radial-gradient(circle at 20% 20%, rgba(180, 190, 200, 0.15), transparent 45%)';
   };
 
-  const fetchImageUrls = useCallback(async (name) => {
+  const fetchImageUrls = async (name) => {
     if (!name) return [];
     const isDf = isDoubleFaced(name);
     const queryName = isDf ? name : name.split('/')[0].trim();
@@ -371,10 +371,44 @@ function App() {
       console.warn('Scryfall fetch failed for', name, e);
       return [];
     }
-  }, [isDoubleFaced]);
+  };
 
+  const fetchHandImageUrls = async (name) => {
+    if (!name) return [];
+    const query = encodeURIComponent(name.split('/')[0].trim());
+    try {
+      const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${query}`);
+      if (!res.ok) return [];
+      const card = await res.json();
+      const faceImages =
+        (card?.card_faces || [])
+          .map(
+            (face) =>
+              face?.image_uris?.small ||
+              face?.image_uris?.normal ||
+              face?.image_uris?.large ||
+              face?.image_uris?.art_crop ||
+              null
+          )
+          .filter(Boolean) || [];
+      const primaryImage =
+        card?.image_uris?.small ||
+        card?.image_uris?.normal ||
+        card?.image_uris?.large ||
+        card?.image_uris?.art_crop ||
+        null;
 
-  const fetchHandBatchImages = useCallback(async (names = []) => {
+      if (faceImages.length) return [faceImages[0]];
+      if (primaryImage) return [primaryImage];
+      return [];
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Scryfall hand fetch failed for', name, e);
+      return [];
+    }
+  };
+
+  const fetchHandBatchImages = async (names = []) => {
     const unique = Array.from(new Set(names.filter(Boolean)));
     if (!unique.length) return {};
     try {
@@ -418,7 +452,7 @@ function App() {
       console.warn('Scryfall batch hand fetch failed', e);
       return {};
     }
-  }, []);
+  };
 
   const prefetchHandImages = async (cards = []) => {
     const names = cards.map((c) => c?.name).filter(Boolean);

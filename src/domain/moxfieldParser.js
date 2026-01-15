@@ -33,6 +33,9 @@ export function parseMoxfieldPlainText(text = '') {
   const commanders = [];
 
   let section = 'main'; // main | sideboard | commanders
+  let sawSideboard = false;
+  let promotedToCommanders = false;
+
   const addCards = (target, count, name) => {
     const n = Number.parseInt(count, 10) || 0;
     for (let i = 0; i < n; i += 1) {
@@ -45,12 +48,14 @@ export function parseMoxfieldPlainText(text = '') {
     if (!line) {
       if (section === 'sideboard') {
         section = 'commanders';
+        promotedToCommanders = true;
       }
       continue;
     }
 
     if (/^sideboard[:]?$/i.test(line)) {
       section = 'sideboard';
+      sawSideboard = true;
       continue;
     }
 
