@@ -535,18 +535,18 @@ function App() {
 
           {!isLoading && !error && (
 
-            <Grid container spacing={2} columns={16} alignItems="stretch">
+            <Grid container spacing={2} columns={32} alignItems="stretch">
               <Grid
                 item
                 xs={0}
                 sm={0}
-                md={3}
-                lg={3}
-                xl={3}
+                md={5}
+                lg={5}
+                xl={5}
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
 
-              <Grid item xs={16} sm={16} md={5} lg={5} xl={5}>
+              <Grid item xs={32} sm={32} md={10} lg={10} xl={10}>
                 <div className="card selection-card">
                   <div className="card-header">
                     <h2>Random Pod</h2>
@@ -653,7 +653,8 @@ function App() {
                   </Grid>
                 </div>
               </Grid>
-              <Grid item xs={16} sm={16} md={5} lg={5} xl={5}>
+
+              <Grid item xs={32} sm={32} md={12} lg={12} xl={12}>
                 <div className="card user-deck">
                   <div className="card-header">
                     <h2>Your Deck</h2>
@@ -790,9 +791,9 @@ function App() {
                 item
                 xs={0}
                 sm={0}
-                md={3}
-                lg={3}
-                xl={3}
+                md={5}
+                lg={5}
+                xl={5}
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
             </Grid>
