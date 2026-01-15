@@ -115,7 +115,7 @@ export async function loadMoxfieldDeckFromUrl(
   deckUrl,
   {
     fetcher = fetch,
-    apiBase = process.env.REACT_APP_MOXFIELD_PROXY_BASE || '/moxapi',
+    apiBase = process.env.REACT_APP_MOXFIELD_PROXY_BASE || '/api/moxproxy',
     headers = {
       Accept: 'application/json',
       'Content-Type': 'application/json',
