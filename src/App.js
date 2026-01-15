@@ -1,8 +1,15 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Grid from '@mui/material/Grid';
 import './App.css';
 import { queryGraphQL } from './api/edhTop16';
-import { loadMoxfieldDeckFromUrl } from './domain/moxfieldParser';
+import {
+  loadMoxfieldDeckFromUrl,
+  extractMoxfieldId,
+} from './domain/moxfieldParser';
+import {
+  loadArchidektDeckFromUrl,
+  extractArchidektId,
+} from './domain/archidektParser';
 
 function App() {
   const [commanders, setCommanders] = useState([]);
@@ -32,7 +39,7 @@ function App() {
   const [userHand, setUserHand] = useState([]);
   const [userCommanders, setUserCommanders] = useState([]);
 
-  const getNameParts = (name) => {
+  const getNameParts = useCallback((name) => {
     if (!name) return [];
     // Treat "//" as a single commander (double-faced), not partners.
     if (name.includes('//')) return [name.trim()];
@@ -40,9 +47,9 @@ function App() {
       .split('/')
       .map((part) => part.trim())
       .filter(Boolean);
-  };
+  }, []);
 
-  const isDoubleFaced = (name) => name?.includes('//');
+  const isDoubleFaced = useCallback((name) => name?.includes('//'), []);
 
   const weightedSampleWithReplacement = (items, count, getWeight) => {
     if (!items.length || count <= 0) return [];
@@ -119,7 +126,7 @@ function App() {
     };
 
     fetchMissingImages();
-  }, [selection, imageCache]);
+  }, [selection, imageCache, fetchImageUrls, getNameParts, isDoubleFaced]);
 
   useEffect(() => {
     const fetchUserCommanderImages = async () => {
@@ -141,7 +148,7 @@ function App() {
       });
     };
     fetchUserCommanderImages();
-  }, [userCommanders, imageCache]);
+  }, [userCommanders, imageCache, fetchImageUrls]);
 
   useEffect(() => {
     const fetchHandImages = async () => {
@@ -159,7 +166,7 @@ function App() {
       });
     };
     fetchHandImages();
-  }, [userHand, imageCache]);
+  }, [userHand, imageCache, fetchHandBatchImages]);
 
   const loadCommanders = async (activeFilters = filters) => {
     setIsLoading(true);
@@ -330,7 +337,7 @@ function App() {
     return stops.join(', ') || 'radial-gradient(circle at 20% 20%, rgba(180, 190, 200, 0.15), transparent 45%)';
   };
 
-  const fetchImageUrls = async (name) => {
+  const fetchImageUrls = useCallback(async (name) => {
     if (!name) return [];
     const isDf = isDoubleFaced(name);
     const queryName = isDf ? name : name.split('/')[0].trim();
@@ -364,44 +371,10 @@ function App() {
       console.warn('Scryfall fetch failed for', name, e);
       return [];
     }
-  };
+  }, [isDoubleFaced]);
 
-  const fetchHandImageUrls = async (name) => {
-    if (!name) return [];
-    const query = encodeURIComponent(name.split('/')[0].trim());
-    try {
-      const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${query}`);
-      if (!res.ok) return [];
-      const card = await res.json();
-      const faceImages =
-        (card?.card_faces || [])
-          .map(
-            (face) =>
-              face?.image_uris?.small ||
-              face?.image_uris?.normal ||
-              face?.image_uris?.large ||
-              face?.image_uris?.art_crop ||
-              null
-          )
-          .filter(Boolean) || [];
-      const primaryImage =
-        card?.image_uris?.small ||
-        card?.image_uris?.normal ||
-        card?.image_uris?.large ||
-        card?.image_uris?.art_crop ||
-        null;
 
-      if (faceImages.length) return [faceImages[0]];
-      if (primaryImage) return [primaryImage];
-      return [];
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn('Scryfall hand fetch failed for', name, e);
-      return [];
-    }
-  };
-
-  const fetchHandBatchImages = async (names = []) => {
+  const fetchHandBatchImages = useCallback(async (names = []) => {
     const unique = Array.from(new Set(names.filter(Boolean)));
     if (!unique.length) return {};
     try {
@@ -445,7 +418,7 @@ function App() {
       console.warn('Scryfall batch hand fetch failed', e);
       return {};
     }
-  };
+  }, []);
 
   const prefetchHandImages = async (cards = []) => {
     const names = cards.map((c) => c?.name).filter(Boolean);
@@ -462,20 +435,45 @@ function App() {
     });
   };
 
-  const loadMoxfieldDeck = async () => {
+  const detectDeckSource = (url = '') => {
+    const trimmed = url.trim();
+    if (!trimmed) return null;
+    const lower = trimmed.toLowerCase();
+    if (lower.includes('archidekt')) return 'archidekt';
+    if (lower.includes('moxfield')) return 'moxfield';
+
+    const archId = extractArchidektId(trimmed);
+    if (archId) return 'archidekt';
+    const moxId = extractMoxfieldId(trimmed);
+    if (moxId) return 'moxfield';
+    return null;
+  };
+
+  const loadDeckFromUrl = async () => {
     setDeckLoading(true);
     setDeckError(null);
     setDeckStatus('Loading deck...');
     try {
-      const { library, commanders } = await loadMoxfieldDeckFromUrl(deckUrl);
+      const source = detectDeckSource(deckUrl);
+      if (!source) {
+        throw new Error('Enter a valid Moxfield or Archidekt deck URL');
+      }
+      const loader =
+        source === 'archidekt' ? loadArchidektDeckFromUrl : loadMoxfieldDeckFromUrl;
+      const { library, commanders, name } = await loader(deckUrl);
       setUserLibrary(library);
       setUserCommanders(commanders);
-      setDeckStatus(`Loaded ${library.cards.length} cards. Click Draw 7 to see your hand.`);
+      const label = source === 'archidekt' ? 'Archidekt' : 'Moxfield';
+      const named = name ? `: ${name}` : '';
+      setDeckStatus(
+        `Loaded ${library.cards.length} cards from ${label}${named}. Click Draw 7 to see your hand.`
+      );
       setUserHand([]);
       await prefetchHandImages(library.cards);
     } catch (err) {
       setDeckError(err.message || 'Failed to load deck');
       setUserLibrary(null);
+      setUserCommanders([]);
       setUserHand([]);
       setDeckStatus('');
     } finally {
@@ -658,7 +656,7 @@ function App() {
                 <div className="card user-deck">
                   <div className="card-header">
                     <h2>Your Deck</h2>
-                    <small>Paste a Moxfield deck link</small>
+                      <small>Paste a Moxfield or Archidekt deck link</small>
                   </div>
                   <Grid container spacing={1} alignItems="center" className="deck-url-row">
                     <Grid item xs={12} sm={8}>
@@ -667,7 +665,7 @@ function App() {
                         type="url"
                         value={deckUrl}
                         onChange={(e) => setDeckUrl(e.target.value)}
-                        placeholder="https://www.moxfield.com/decks/..."
+                          placeholder="https://www.moxfield.com/decks/... or https://archidekt.com/decks/..."
                       />
                     </Grid>
                     <Grid item xs={12} sm={4}>
@@ -675,7 +673,7 @@ function App() {
                         <button
                           type="button"
                           className="primary"
-                          onClick={loadMoxfieldDeck}
+                            onClick={loadDeckFromUrl}
                           disabled={deckLoading || !deckUrl}
                         >
                           {deckLoading ? 'Loading...' : 'Load Decklist'}

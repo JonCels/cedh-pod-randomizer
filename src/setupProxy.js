@@ -34,4 +34,19 @@ module.exports = function (app) {
       },
     })
   );
+
+  app.use(
+    ['/api/archidekt', '/archidekt'],
+    createProxyMiddleware({
+      target: 'https://archidekt.com',
+      changeOrigin: true,
+      pathRewrite: (path) =>
+        path.replace(/^\/api\/archidekt/, '').replace(/^\/archidekt/, ''),
+      onProxyReq: (proxyReq) => {
+        const ua = process.env.ARCHIDEKT_USER_AGENT || 'mtg-pod-randomizer/1.0';
+        proxyReq.setHeader('user-agent', ua);
+        proxyReq.setHeader('accept', 'application/json');
+      },
+    })
+  );
 };
