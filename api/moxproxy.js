@@ -14,7 +14,7 @@ const readBody = async (req) => {
 };
 
 export default async function handler(req, res) {
-  const { path, debug, ...rest } = req.query;
+  const { path, ...rest } = req.query;
   const pathStr = Array.isArray(path) ? path.join('/') : path;
   if (!pathStr) {
     res.status(400).json({ error: 'Missing path. Example: /api/moxproxy?path=v2/decks/all/<id>' });
@@ -36,12 +36,6 @@ export default async function handler(req, res) {
   };
   if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
 
-  // Debug: append debug=1 to see target and headers.
-  if (debug === '1') {
-    res.status(200).json({ target: url, method: req.method, headers });
-    return;
-  }
-
   const init = { method: req.method, headers };
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     init.body = await readBody(req);
@@ -57,8 +51,6 @@ export default async function handler(req, res) {
     res.status(500).json({
       error: 'Proxy failed',
       detail: e?.message || 'unknown',
-      target: url,
-      stack: e?.stack || undefined,
     });
   }
 }
