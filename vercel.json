@@ -2,11 +2,11 @@
   "rewrites": [
     {
       "source": "/api/moxapi/(.*)",
-      "destination": "/api/moxproxy/$1"
+      "destination": "/api/moxproxy?path=$1"
     },
     {
       "source": "/moxapi/(.*)",
-      "destination": "/api/moxproxy/$1"
+      "destination": "/api/moxproxy?path=$1"
     }
   ]
 }
