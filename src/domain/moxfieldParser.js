@@ -108,14 +108,14 @@ export const buildPlainTextFromApiDeck = (data = {}) => {
  * @param {string} deckUrl full deck URL or id
  * @param {object} opts options
  * @param {typeof fetch} opts.fetcher custom fetch for testing
- * @param {string} opts.apiBase base URL (defaults to '/moxapi' so a proxy can inject auth/UA)
+ * @param {string} opts.apiBase base URL (defaults to '/api/moxapi' so a proxy can inject auth/UA)
  * @param {Record<string,string>} opts.headers extra headers (user-agent, auth) if needed
  */
 export async function loadMoxfieldDeckFromUrl(
   deckUrl,
   {
     fetcher = fetch,
-    apiBase = process.env.REACT_APP_MOXFIELD_PROXY_BASE || '/api/moxproxy',
+    apiBase = process.env.REACT_APP_MOXFIELD_PROXY_BASE || '/api/moxapi',
     headers = {
       Accept: 'application/json',
       'Content-Type': 'application/json',

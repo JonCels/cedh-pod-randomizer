@@ -17,12 +17,11 @@ export default async function handler(req, res) {
   const { path, ...rest } = req.query;
   const pathStr = Array.isArray(path) ? path.join('/') : path;
 
-  // Also support /api/moxproxy/v2/decks/all/<id> (path segments) in addition to ?path=...
-  const urlPath = (req.url.split('?')[0] || '').replace(/^\/api\/moxproxy\/?/, '');
+  const urlPath = (req.url.split('?')[0] || '').replace(/^\/api\/(moxproxy|moxapi)\/?/, '');
   const effectivePath = pathStr || urlPath;
 
   if (!effectivePath) {
-    res.status(400).json({ error: 'Missing path. Example: /api/moxproxy?path=v2/decks/all/<id>' });
+    res.status(400).json({ error: 'Missing path. Example: /api/moxapi/v2/decks/all/<id>' });
     return;
   }
 
