@@ -49,19 +49,10 @@ export default async function handler(req, res) {
 
   try {
     const upstream = await fetch(url, init);
-    if (upstream.ok) {
-      res.status(upstream.status);
-      upstream.headers.forEach((v, k) => res.setHeader(k, v));
-      upstream.body.pipe(res);
-      return;
-    }
-    const text = await upstream.text();
-    res.status(upstream.status).json({
-      error: 'Upstream error',
-      status: upstream.status,
-      statusText: upstream.statusText,
-      body: text?.slice(0, 500) || '',
-    });
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    res.status(upstream.status);
+    upstream.headers.forEach((v, k) => res.setHeader(k, v));
+    res.send(buf);
   } catch (e) {
     res.status(500).json({
       error: 'Proxy failed',
