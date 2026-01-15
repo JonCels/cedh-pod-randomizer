@@ -37,7 +37,11 @@ export default async function handler(req, res) {
     process.env.MOXFIELD_KEY_HEADER ||
     process.env.NEXT_PUBLIC_MOXFIELD_KEY_HEADER ||
     'X-Moxfield-Key';
-  headers[keyHeader] = ''; // always send header, no key
+  const keyValue =
+    process.env.MOXFIELD_KEY_VALUE ||
+    process.env.NEXT_PUBLIC_MOXFIELD_KEY_VALUE ||
+    '';
+  headers[keyHeader] = keyValue; // always send header, even if empty
   if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
 
   // Debug: append debug=1 to see target and headers.
