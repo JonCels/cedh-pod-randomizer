@@ -31,17 +31,9 @@ export default async function handler(req, res) {
 
   const headers = {
     accept: 'application/json',
+    'content-type': 'application/json',
     'user-agent': process.env.MOXFIELD_USER_AGENT || 'mtg-pod-randomizer/1.0',
   };
-  const keyHeader =
-    process.env.MOXFIELD_KEY_HEADER ||
-    process.env.NEXT_PUBLIC_MOXFIELD_KEY_HEADER ||
-    'X-Moxfield-Key';
-  const keyValue =
-    process.env.MOXFIELD_KEY_VALUE ||
-    process.env.NEXT_PUBLIC_MOXFIELD_KEY_VALUE ||
-    '';
-  headers[keyHeader] = keyValue; // always send header, even if empty
   if (req.headers['content-type']) headers['content-type'] = req.headers['content-type'];
 
   // Debug: append debug=1 to see target and headers.

@@ -47,6 +47,7 @@ async function main() {
       headers['X-Moxfield-Key'] = apiKey;
     }
 
+    console.log('Headers:', headers);
     const res = await fetch(upstreamUrl, { headers });
     const text = await res.text();
     console.log('Status:', res.status);
