@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react';
 import Grid from '@mui/material/Grid';
 import './App.css';
 import { queryGraphQL } from './api/edhTop16';
-import { loadMoxfieldDeckFromUrl } from './domain/moxfieldParser';
+import {
+  loadMoxfieldDeckFromUrl,
+  extractMoxfieldId,
+} from './domain/moxfieldParser';
+import {
+  loadArchidektDeckFromUrl,
+  extractArchidektId,
+} from './domain/archidektParser';
 
 function App() {
   const [commanders, setCommanders] = useState([]);
@@ -462,20 +469,45 @@ function App() {
     });
   };
 
-  const loadMoxfieldDeck = async () => {
+  const detectDeckSource = (url = '') => {
+    const trimmed = url.trim();
+    if (!trimmed) return null;
+    const lower = trimmed.toLowerCase();
+    if (lower.includes('archidekt')) return 'archidekt';
+    if (lower.includes('moxfield')) return 'moxfield';
+
+    const archId = extractArchidektId(trimmed);
+    if (archId) return 'archidekt';
+    const moxId = extractMoxfieldId(trimmed);
+    if (moxId) return 'moxfield';
+    return null;
+  };
+
+  const loadDeckFromUrl = async () => {
     setDeckLoading(true);
     setDeckError(null);
     setDeckStatus('Loading deck...');
     try {
-      const { library, commanders } = await loadMoxfieldDeckFromUrl(deckUrl);
+      const source = detectDeckSource(deckUrl);
+      if (!source) {
+        throw new Error('Enter a valid Moxfield or Archidekt deck URL');
+      }
+      const loader =
+        source === 'archidekt' ? loadArchidektDeckFromUrl : loadMoxfieldDeckFromUrl;
+      const { library, commanders, name } = await loader(deckUrl);
       setUserLibrary(library);
       setUserCommanders(commanders);
-      setDeckStatus(`Loaded ${library.cards.length} cards. Click Draw 7 to see your hand.`);
+      const label = source === 'archidekt' ? 'Archidekt' : 'Moxfield';
+      const named = name ? `: ${name}` : '';
+      setDeckStatus(
+        `Loaded ${library.cards.length} cards from ${label}${named}. Click Draw 7 to see your hand.`
+      );
       setUserHand([]);
       await prefetchHandImages(library.cards);
     } catch (err) {
       setDeckError(err.message || 'Failed to load deck');
       setUserLibrary(null);
+      setUserCommanders([]);
       setUserHand([]);
       setDeckStatus('');
     } finally {
@@ -658,7 +690,7 @@ function App() {
                 <div className="card user-deck">
                   <div className="card-header">
                     <h2>Your Deck</h2>
-                    <small>Paste a Moxfield deck link</small>
+                      <small>Paste a Moxfield or Archidekt deck link</small>
                   </div>
                   <Grid container spacing={1} alignItems="center" className="deck-url-row">
                     <Grid item xs={12} sm={8}>
@@ -667,7 +699,7 @@ function App() {
                         type="url"
                         value={deckUrl}
                         onChange={(e) => setDeckUrl(e.target.value)}
-                        placeholder="https://www.moxfield.com/decks/..."
+                          placeholder="https://www.moxfield.com/decks/... or https://archidekt.com/decks/..."
                       />
                     </Grid>
                     <Grid item xs={12} sm={4}>
@@ -675,7 +707,7 @@ function App() {
                         <button
                           type="button"
                           className="primary"
-                          onClick={loadMoxfieldDeck}
+                            onClick={loadDeckFromUrl}
                           disabled={deckLoading || !deckUrl}
                         >
                           {deckLoading ? 'Loading...' : 'Load Decklist'}
