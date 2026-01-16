@@ -38,6 +38,7 @@ function App() {
   const [userLibrary, setUserLibrary] = useState(null);
   const [userHand, setUserHand] = useState([]);
   const [userCommanders, setUserCommanders] = useState([]);
+  const [deckNameCounts, setDeckNameCounts] = useState({});
   const [deckLinks, setDeckLinks] = useState({});
   const [deckLinksLoading, setDeckLinksLoading] = useState(false);
   const [deckLinksError, setDeckLinksError] = useState(null);
@@ -591,6 +592,13 @@ function App() {
       const { library, commanders, name } = await loader(deckUrl);
       setUserLibrary(library);
       setUserCommanders(commanders);
+      // track counts for duplicate detection during draws
+      const nameCounts = library.cards.reduce((map, card) => {
+        if (!card?.name) return map;
+        map[card.name] = (map[card.name] || 0) + 1;
+        return map;
+      }, {});
+      setDeckNameCounts(nameCounts);
       const label = source === 'archidekt' ? 'Archidekt' : 'Moxfield';
       const named = name ? `: ${name}` : '';
       setDeckStatus(
@@ -611,8 +619,33 @@ function App() {
 
   const drawUserHand = () => {
     if (!userLibrary) return;
-    const opening = userLibrary.drawOpeningHand(7);
-    setUserHand(opening.hand);
+
+    // Draw, but if we somehow hit duplicates of a singleton (unexpected), retry a couple times.
+    const maxAttempts = 3;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const opening = userLibrary.drawOpeningHand(7);
+      const handCounts = opening.hand.reduce((map, card) => {
+        if (!card?.name) return map;
+        map[card.name] = (map[card.name] || 0) + 1;
+        return map;
+      }, {});
+      const hasBadDup = Object.entries(handCounts).some(([name, count]) => {
+        const deckCount = deckNameCounts[name] || 0;
+        return deckCount <= 1 && count > 1;
+      });
+      if (!hasBadDup) {
+        setUserHand(opening.hand);
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.warn('Detected duplicate singleton in opening hand; retrying draw', {
+        attempt: attempt + 1,
+        handCounts,
+      });
+      if (attempt === maxAttempts - 1) {
+        setUserHand(opening.hand); // fall back to last draw after retries
+      }
+    }
   };
 
   return (
