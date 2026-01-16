@@ -634,6 +634,8 @@ function App() {
         return deckCount <= 1 && count > 1;
       });
       if (!hasBadDup) {
+        // eslint-disable-next-line no-console
+        console.log('Opening hand (names):', opening.hand.map((c) => c?.name || '(unknown)'));
         setUserHand(opening.hand);
         return;
       }
