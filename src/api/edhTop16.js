@@ -79,4 +79,63 @@ export async function queryGraphQL({ query, variables }) {
   return json.data;
 }
 
+/**
+ * Fetch recent entries (tournament finishes) for a commander.
+ * Returned array contains entry nodes so callers can rank/select a decklist.
+ */
+export async function getCommanderEntries({
+  commanderName,
+  first = 25,
+  timePeriod,
+  minEventSize = 0,
+  maxStanding,
+}) {
+  const data = await queryGraphQL({
+    query: `
+      query CommanderEntries(
+        $commanderName: String!
+        $first: Int!
+        $timePeriod: TimePeriod!
+        $minEventSize: Int!
+        $maxStanding: Int
+      ) {
+        commander(name: $commanderName) {
+          name
+          entries(
+            first: $first
+            sortBy: TOP
+            filters: {
+              timePeriod: $timePeriod
+              minEventSize: $minEventSize
+              maxStanding: $maxStanding
+            }
+          ) {
+            edges {
+              node {
+                decklist
+                standing
+                tournament {
+                  name
+                  tournamentDate
+                  TID
+                  size
+                }
+              }
+            }
+          }
+        }
+      }
+    `,
+    variables: {
+      commanderName,
+      first,
+      timePeriod,
+      minEventSize,
+      maxStanding,
+    },
+  });
+
+  return data?.commander?.entries?.edges?.map((edge) => edge?.node).filter(Boolean) || [];
+}
+
 

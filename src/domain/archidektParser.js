@@ -38,7 +38,18 @@ export const parseArchidektDeckData = (data = {}) => {
     '';
 
   cards.forEach((entry, idx) => {
-    if (!entry || entry.maybeboard || entry.sideboard) return;
+    if (!entry) return;
+    const categories = (entry.categories || []).map((c) => `${c}`.toLowerCase());
+    const board = `${entry.board || entry.section || ''}`.toLowerCase();
+    const isSideboard =
+      entry.sideboard ||
+      categories.some((c) => c.includes('sideboard')) ||
+      board.includes('sideboard');
+    const isMaybeboard =
+      entry.maybeboard ||
+      categories.some((c) => c.includes('maybeboard') || c.includes('maybe')) ||
+      board.includes('maybe');
+    if (isSideboard || isMaybeboard) return;
     const name = normalizeName(entry);
     if (!name) return;
 

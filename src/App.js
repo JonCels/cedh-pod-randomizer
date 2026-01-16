@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Grid from '@mui/material/Grid';
 import './App.css';
-import { queryGraphQL } from './api/edhTop16';
+import { queryGraphQL, getCommanderEntries } from './api/edhTop16';
 import {
   loadMoxfieldDeckFromUrl,
   extractMoxfieldId,
@@ -38,6 +38,9 @@ function App() {
   const [userLibrary, setUserLibrary] = useState(null);
   const [userHand, setUserHand] = useState([]);
   const [userCommanders, setUserCommanders] = useState([]);
+  const [deckLinks, setDeckLinks] = useState({});
+  const [deckLinksLoading, setDeckLinksLoading] = useState(false);
+  const [deckLinksError, setDeckLinksError] = useState(null);
 
   const getNameParts = (name) => {
     if (!name) return [];
@@ -78,6 +81,35 @@ function App() {
     }
     return copy;
   };
+
+  const normalizeAndSortEntries = useCallback((entries = []) => {
+    const normalized = entries
+      .map((entry) => ({
+        decklist: entry?.decklist,
+        standing:
+          entry?.standing === 0 || entry?.standing
+            ? Number(entry.standing)
+            : Number.POSITIVE_INFINITY,
+        tournamentName: entry?.tournament?.name || '',
+        tournamentDate: entry?.tournament?.tournamentDate || '',
+        eventSize:
+          entry?.tournament?.size === 0 || entry?.tournament?.size
+            ? Number(entry.tournament.size)
+            : 0,
+      }))
+      .filter((e) => e.decklist);
+
+    normalized.sort((a, b) => {
+      if (a.standing !== b.standing) return a.standing - b.standing;
+      if (a.eventSize !== b.eventSize) return b.eventSize - a.eventSize;
+      const dateA = a.tournamentDate ? Date.parse(a.tournamentDate) || 0 : 0;
+      const dateB = b.tournamentDate ? Date.parse(b.tournamentDate) || 0 : 0;
+      if (dateA !== dateB) return dateB - dateA;
+      return 0; // stable on fetch order if still tied
+    });
+
+    return normalized;
+  }, []);
 
   const rollSelection = (list = commanders) => {
     const picks = weightedSampleWithReplacement(
@@ -253,6 +285,62 @@ function App() {
     loadCommanders(pendingFilters);
   };
 
+  useEffect(() => {
+    const fetchDeckLinks = async () => {
+      const names = selection.map((c) => c?.name).filter(Boolean);
+      if (!names.length) {
+        setDeckLinks({});
+        return;
+      }
+
+      setDeckLinksLoading(true);
+      setDeckLinksError(null);
+
+      try {
+        const minEventSizeRaw =
+          filters.minTournamentSize === '' ? 0 : Number(filters.minTournamentSize);
+        const minEventSize = Number.isFinite(minEventSizeRaw) ? minEventSizeRaw : 0;
+        const timePeriod = filters.timePeriod;
+
+        const results = await Promise.all(
+          names.map(async (name) => {
+            try {
+              const entries = await getCommanderEntries({
+                commanderName: name,
+                first: 200,
+                timePeriod,
+                minEventSize,
+              });
+              const sorted = normalizeAndSortEntries(entries);
+              return { name, sorted };
+            } catch (err) {
+              // eslint-disable-next-line no-console
+              console.warn('Failed to fetch decklist for', name, err);
+              return { name, sorted: [], error: err };
+            }
+          })
+        );
+
+        const map = {};
+        results.forEach(({ name, sorted }) => {
+          if (sorted && sorted.length) map[name] = sorted;
+        });
+        setDeckLinks(map);
+
+        if (results.some((r) => r.error)) {
+          setDeckLinksError('Some decklists could not be fetched.');
+        }
+      } catch (err) {
+        setDeckLinks({});
+        setDeckLinksError(err.message || 'Unable to fetch decklists');
+      } finally {
+        setDeckLinksLoading(false);
+      }
+    };
+
+    fetchDeckLinks();
+  }, [selection, filters, normalizeAndSortEntries]);
+
   const onFilterChange = (key, value) => {
     setPendingFilters((prev) => ({ ...prev, [key]: value }));
   };
@@ -269,6 +357,12 @@ function App() {
       return `${((raw / metaTotal) * 100).toFixed(1)}%`;
     }
     return raw.toFixed(3);
+  };
+
+  const formatConversionPct = (commander) => {
+    const raw = commander?.stats?.conversionRate;
+    if (raw === undefined || raw === null) return 'N/A';
+    return `${(raw * 100).toFixed(1)}%`;
   };
 
   const colorGradient = (colorId = '') => {
@@ -567,18 +661,18 @@ function App() {
 
           {!isLoading && !error && (
 
-            <Grid container spacing={2} columns={32} alignItems="stretch">
+            <Grid container spacing={2} columns={16} alignItems="stretch">
               <Grid
                 item
                 xs={0}
                 sm={0}
-                md={5}
-                lg={5}
-                xl={5}
+                md={2}
+                lg={2}
+                xl={2}
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
 
-              <Grid item xs={32} sm={32} md={10} lg={10} xl={10}>
+              <Grid item xs={16} sm={16} md={6} lg={6} xl={6}>
                 <div className="card selection-card">
                   <div className="card-header">
                     <h2>Random Pod</h2>
@@ -595,7 +689,9 @@ function App() {
                     className="selection-list"
                     justifyContent="center"
                   >
-                    {selection
+                    {(() => {
+                      const deckUseCounts = {};
+                      return selection
                       .map((commander, idx) => ({
                         seat: seatAssignments[idx] ?? idx + 2,
                         commander,
@@ -671,22 +767,57 @@ function App() {
                                 </span>
                                 <span>Entries: {commander.stats?.count ?? 'N/A'}</span>
                                 <span>
-                                  Conv:{' '}
-                                  {commander.stats?.conversionRate !== undefined
-                                    ? commander.stats.conversionRate.toFixed(3)
-                                    : 'N/A'}
+                                  Conv: {formatConversionPct(commander)}
                                 </span>
                                 <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
+                              </div>
+                              <div className="deck-link-row">
+                                {deckLinksLoading && !deckLinks[commander.name] && (
+                                  <span className="status subtle">Finding a deck...</span>
+                                )}
+                                {(() => {
+                                  const currentCount = deckUseCounts[commander.name] || 0;
+                                  const candidate = deckLinks[commander.name]?.[currentCount];
+                                  deckUseCounts[commander.name] = currentCount + 1;
+
+                                  if (candidate?.decklist) {
+                                    return (
+                                      <a
+                                        href={candidate.decklist}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="deck-link"
+                                      >
+                                        View decklist
+                                        {Number.isFinite(candidate.standing) && (
+                                          <>
+                                            {' '}
+                                            (placed {candidate.standing}
+                                            {candidate.tournamentName
+                                              ? ` @ ${candidate.tournamentName}`
+                                              : ''}
+                                            )
+                                          </>
+                                        )}
+                                      </a>
+                                    );
+                                  }
+                                  return null;
+                                })()}
+                                {deckLinksError && !deckLinks[commander.name] && (
+                                  <span className="status error">Decklist unavailable</span>
+                                )}
                               </div>
                             </div>
                           </Grid>
                         );
-                      })}
+                      });
+                    })()}
                   </Grid>
                 </div>
               </Grid>
 
-              <Grid item xs={32} sm={32} md={12} lg={12} xl={12}>
+              <Grid item xs={16} sm={16} md={6} lg={6} xl={6}>
                 <div className="card user-deck">
                   <div className="card-header">
                     <h2>Your Deck</h2>
@@ -823,9 +954,9 @@ function App() {
                 item
                 xs={0}
                 sm={0}
-                md={5}
-                lg={5}
-                xl={5}
+                md={2}
+                lg={2}
+                xl={2}
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
             </Grid>
@@ -959,10 +1090,7 @@ function App() {
                         </span>
                         <span>Entries: {commander.stats?.count ?? 'N/A'}</span>
                         <span>
-                          Conv:{' '}
-                          {commander.stats?.conversionRate !== undefined
-                            ? commander.stats.conversionRate.toFixed(3)
-                            : 'N/A'}
+                          Conv: {formatConversionPct(commander)}
                         </span>
                         <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
                         <span>Color: {commander.colorId}</span>
