@@ -599,12 +599,19 @@ function App() {
       if (!source) {
         throw new Error('Enter a valid Moxfield, Archidekt, or TopDeck deck URL');
       }
-      const loader =
-        source === 'archidekt'
-          ? loadArchidektDeckFromUrl
-          : source === 'topdeck'
-            ? loadTopdeckDeckFromUrl
-            : loadMoxfieldDeckFromUrl;
+      let loader;
+      switch (source) {
+        case 'archidekt':
+          loader = loadArchidektDeckFromUrl;
+          break;
+        case 'topdeck':
+          loader = loadTopdeckDeckFromUrl;
+          break;
+        case 'moxfield':
+        default:
+          loader = loadMoxfieldDeckFromUrl;
+          break;
+      }
       const { library, commanders, name } = await loader(deckUrl);
       setUserLibrary(library);
       setUserCommanders(commanders);
