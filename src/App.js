@@ -435,7 +435,7 @@ function App() {
   const fetchImageUrls = async (name) => {
     if (!name) return [];
     const isDf = isDoubleFaced(name);
-    const queryName = isDf ? name : name.split('/')[0].trim();
+    const queryName = (isDf ? name.split('//')[0] : name.split('/')[0]).trim();
     const query = encodeURIComponent(queryName);
     try {
       const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${query}`);
@@ -470,7 +470,8 @@ function App() {
 
   const fetchHandImageUrls = async (name) => {
     if (!name) return [];
-    const query = encodeURIComponent(name.split('/')[0].trim());
+    const queryName = (isDoubleFaced(name) ? name.split('//')[0] : name.split('/')[0]).trim();
+    const query = encodeURIComponent(queryName);
     try {
       const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${query}`);
       if (!res.ok) return [];
@@ -506,9 +507,13 @@ function App() {
   const fetchHandBatchImages = async (names = []) => {
     const unique = Array.from(new Set(names.filter(Boolean)));
     if (!unique.length) return {};
+    const queries = unique.map((n) => ({
+      key: n,
+      query: (isDoubleFaced(n) ? n.split('//')[0] : n.split('/')[0]).trim(),
+    }));
     try {
       const body = {
-        identifiers: unique.map((n) => ({ name: n })),
+        identifiers: queries.map((q) => ({ name: q.query })),
       };
       const res = await fetch('https://api.scryfall.com/cards/collection', {
         method: 'POST',
@@ -519,7 +524,7 @@ function App() {
       const data = await res.json();
       const map = {};
       (data?.data || []).forEach((card, idx) => {
-        const name = unique[idx] || card?.name;
+        const name = queries[idx]?.key || card?.name;
         if (!name) return;
         const faceImages =
           (card?.card_faces || [])
