@@ -10,6 +10,10 @@ import {
   loadArchidektDeckFromUrl,
   extractArchidektId,
 } from './domain/archidektParser';
+import {
+  loadTopdeckDeckFromUrl,
+  extractTopdeckIds,
+} from './domain/topdeckParser';
 
 function App() {
   const [commanders, setCommanders] = useState([]);
@@ -575,11 +579,14 @@ function App() {
     const lower = trimmed.toLowerCase();
     if (lower.includes('archidekt')) return 'archidekt';
     if (lower.includes('moxfield')) return 'moxfield';
+    if (lower.includes('topdeck.gg/deck')) return 'topdeck';
 
     const archId = extractArchidektId(trimmed);
     if (archId) return 'archidekt';
     const moxId = extractMoxfieldId(trimmed);
     if (moxId) return 'moxfield';
+    const topdeckIds = extractTopdeckIds(trimmed);
+    if (topdeckIds) return 'topdeck';
     return null;
   };
 
@@ -590,10 +597,14 @@ function App() {
     try {
       const source = detectDeckSource(deckUrl);
       if (!source) {
-        throw new Error('Enter a valid Moxfield or Archidekt deck URL');
+        throw new Error('Enter a valid Moxfield, Archidekt, or TopDeck deck URL');
       }
       const loader =
-        source === 'archidekt' ? loadArchidektDeckFromUrl : loadMoxfieldDeckFromUrl;
+        source === 'archidekt'
+          ? loadArchidektDeckFromUrl
+          : source === 'topdeck'
+            ? loadTopdeckDeckFromUrl
+            : loadMoxfieldDeckFromUrl;
       const { library, commanders, name } = await loader(deckUrl);
       setUserLibrary(library);
       setUserCommanders(commanders);
@@ -604,7 +615,8 @@ function App() {
         return map;
       }, {});
       setDeckNameCounts(nameCounts);
-      const label = source === 'archidekt' ? 'Archidekt' : 'Moxfield';
+      const label =
+        source === 'archidekt' ? 'Archidekt' : source === 'topdeck' ? 'TopDeck' : 'Moxfield';
       const named = name ? `: ${name}` : '';
       setDeckStatus(
         `Loaded ${library.cards.length} cards from ${label}${named}. Click Draw 7 to see your hand.`
@@ -861,7 +873,7 @@ function App() {
                 <div className="card user-deck">
                   <div className="card-header">
                     <h2>Your Deck</h2>
-                      <small>Paste a Moxfield or Archidekt deck link</small>
+                      <small>Paste a Moxfield, Archidekt, or TopDeck deck link</small>
                   </div>
                   <Grid container spacing={1} alignItems="center" className="deck-url-row">
                     <Grid item xs={12} sm={8}>
@@ -870,7 +882,7 @@ function App() {
                         type="url"
                         value={deckUrl}
                         onChange={(e) => setDeckUrl(e.target.value)}
-                          placeholder="https://www.moxfield.com/decks/... or https://archidekt.com/decks/..."
+                          placeholder="https://www.moxfield.com/decks/... or https://archidekt.com/decks/... or https://topdeck.gg/deck/..."
                       />
                     </Grid>
                     <Grid item xs={12} sm={4}>
