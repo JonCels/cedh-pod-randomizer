@@ -49,4 +49,20 @@ module.exports = function (app) {
       },
     })
   );
+
+  app.use(
+    ['/api/topdeck', '/topdeck'],
+    createProxyMiddleware({
+      target: 'https://topdeck.gg',
+      changeOrigin: true,
+      pathRewrite: (path) =>
+        path.replace(/^\/api\/topdeck/, '').replace(/^\/topdeck/, ''),
+      onProxyReq: (proxyReq) => {
+        proxyReq.setHeader('accept', 'application/json');
+        if (process.env.TOPDECK_API_KEY) {
+          proxyReq.setHeader('authorization', process.env.TOPDECK_API_KEY);
+        }
+      },
+    })
+  );
 };

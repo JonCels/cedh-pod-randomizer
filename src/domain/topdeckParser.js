@@ -156,16 +156,16 @@ const extractDeckPayload = (data = {}) => {
  * @param {string} deckUrl full TopDeck deck URL
  * @param {object} opts options
  * @param {typeof fetch} opts.fetcher custom fetch for testing
- * @param {string} opts.apiBase base URL (defaults to TopDeck API)
- * @param {string} opts.apiKey TopDeck API key
+ * @param {string} opts.apiBase base URL (defaults to '/api/topdeck' proxy)
+ * @param {string} opts.apiKey TopDeck API key (required for direct calls)
  * @param {Record<string,string>} opts.headers extra headers if needed
  */
 export async function loadTopdeckDeckFromUrl(
   deckUrl,
   {
     fetcher = fetch,
-    apiBase = process.env.REACT_APP_TOPDECK_PROXY_BASE || 'https://topdeck.gg/api',
-    apiKey = process.env.REACT_APP_TOPDECK_API_KEY || '',
+    apiBase = process.env.REACT_APP_TOPDECK_PROXY_BASE || '/api/topdeck',
+    apiKey = '',
     headers = {
       Accept: 'application/json',
     },
@@ -175,20 +175,19 @@ export async function loadTopdeckDeckFromUrl(
   if (!ids?.tournamentId || !ids?.playerId) {
     throw new Error('Enter a valid TopDeck deck URL');
   }
-  if (!apiKey) {
+  const needsKey = isHttpUrl(apiBase);
+  if (needsKey && !apiKey) {
     throw new Error('Missing TopDeck API key');
   }
 
   const cleanBase = apiBase.replace(/\/+$/, '');
+  const requestHeaders = apiKey ? { ...headers, Authorization: apiKey } : headers;
   const res = await fetcher(
     `${cleanBase}/v2/tournaments/${encodeURIComponent(
       ids.tournamentId
     )}/players/${encodeURIComponent(ids.playerId)}`,
     {
-      headers: {
-        ...headers,
-        Authorization: apiKey,
-      },
+      headers: requestHeaders,
     }
   );
   if (!res.ok) {

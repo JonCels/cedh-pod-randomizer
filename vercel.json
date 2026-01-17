@@ -15,6 +15,14 @@
     {
       "source": "/archidekt/(.*)",
       "destination": "/api/archproxy?path=$1"
+    },
+    {
+      "source": "/api/topdeck/(.*)",
+      "destination": "/api/topdeckproxy?path=$1"
+    },
+    {
+      "source": "/topdeck/(.*)",
+      "destination": "/api/topdeckproxy?path=$1"
     }
   ]
 }
