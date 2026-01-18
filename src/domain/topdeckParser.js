@@ -51,7 +51,20 @@ export const parseTopdeckDeckObj = (deckObj = {}) => {
   const library = [];
   const commanders = [];
 
-  Object.entries(deckObj || {}).forEach(([section, entries]) => {
+  const sections = Object.entries(deckObj || {});
+  const commanderSections = sections.filter(([section]) =>
+    normalizeSectionName(section).includes('commander')
+  );
+  const mainSections = sections.filter(([section]) => {
+    const sectionName = normalizeSectionName(section);
+    return sectionName.includes('main');
+  });
+
+  const preferred = mainSections.length
+    ? [...commanderSections, ...mainSections]
+    : sections;
+
+  preferred.forEach(([section, entries]) => {
     const sectionName = normalizeSectionName(section);
     const isCommanderSection = sectionName.includes('commander');
     const isIgnored =
