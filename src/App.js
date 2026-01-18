@@ -627,6 +627,44 @@ function App() {
     return null;
   }, []);
 
+  const buildOpponentDeckChoices = useCallback(() => {
+    if (!selection.length) return [];
+    const deckUseCounts = {};
+    return selection
+      .map((commander, idx) => ({
+        seat: seatAssignments[idx] ?? idx + 2,
+        commander,
+      }))
+      .sort((a, b) => a.seat - b.seat)
+      .map((entry) => {
+        const currentCount = deckUseCounts[entry.commander.name] || 0;
+        const candidate = deckLinks[entry.commander.name]?.[currentCount];
+        deckUseCounts[entry.commander.name] = currentCount + 1;
+        return { ...entry, entry: candidate };
+      });
+  }, [selection, seatAssignments, deckLinks]);
+
+  useEffect(() => {
+    const choices = buildOpponentDeckChoices();
+    setOpponentDeckChoices(choices);
+    setOpponentLibraries({});
+    setOpponentDraws({});
+    setOpponentDeckErrors({});
+  }, [buildOpponentDeckChoices]);
+
+  const drawOpponentCard = useCallback((key) => {
+    setOpponentLibraries((prev) => {
+      const library = prev[key];
+      if (!library) return prev;
+      const draw = library.drawRandom();
+      setOpponentDraws((prevDraws) => ({
+        ...prevDraws,
+        [key]: draw.hand[0],
+      }));
+      return { ...prev, [key]: draw.library };
+    });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -655,7 +693,7 @@ function App() {
           try {
             const { library } = await loader(deckUrl);
             const draw = library.drawRandom();
-            return { key, library, card: draw.hand[0] };
+            return { key, library: draw.library, card: draw.hand[0] };
           } catch (err) {
             return { key, error: err.message || 'Failed to load deck' };
           }
@@ -946,6 +984,11 @@ function App() {
                                     )}
                                   </a>
                                 )}
+                                {!deckEntry?.decklist &&
+                                  !deckLinksLoading &&
+                                  !deckLinksError && (
+                                    <span className="status subtle">No deck link found</span>
+                                  )}
                                 {deckLinksError && !deckLinks[commander.name] && (
                                   <span className="status error">Decklist unavailable</span>
                                 )}
@@ -957,6 +1000,14 @@ function App() {
                                     {opponentDeckErrors[selectionKey]}
                                   </span>
                                 )}
+                                <button
+                                  type="button"
+                                  className="opponent-draw-btn"
+                                  onClick={() => drawOpponentCard(selectionKey)}
+                                  disabled={!opponentLibraries[selectionKey]}
+                                >
+                                  Draw card
+                                </button>
                                 {opponentCard && (
                                   <div className="opponent-draw">
                                     {opponentImages[0] ? (

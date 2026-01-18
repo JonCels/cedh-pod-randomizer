@@ -340,6 +340,30 @@ body {
   width: 100%;
 }
 
+.deck-link-row .deck-link {
+  color: #bae6fd;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.deck-link-row .deck-link:hover {
+  text-decoration: underline;
+}
+
+.opponent-draw-btn {
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid #1f2937;
+  background: #0b1220;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.opponent-draw-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .opponent-draw {
   margin-left: auto;
   display: flex;
