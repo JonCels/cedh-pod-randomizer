@@ -960,6 +960,34 @@ function App() {
                                 </span>
                                 <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
                               </div>
+                              <div className="deck-link-row">
+                                {deckLinksLoading && !deckLinks[commander.name] && (
+                                  <span className="status subtle">Finding a deck...</span>
+                                )}
+                                {deckEntry?.decklist && (
+                                  <a
+                                    href={deckEntry.decklist}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="deck-link"
+                                  >
+                                    View decklist
+                                    {Number.isFinite(deckEntry.standing) && (
+                                      <>
+                                        {' '}
+                                        (placed {deckEntry.standing}
+                                        {deckEntry.tournamentName
+                                          ? ` @ ${deckEntry.tournamentName}`
+                                          : ''}
+                                        )
+                                      </>
+                                    )}
+                                  </a>
+                                )}
+                                {deckLinksError && !deckLinks[commander.name] && (
+                                  <span className="status error">Decklist unavailable</span>
+                                )}
+                              </div>
                             </div>
                           </Grid>
                         );
