@@ -46,6 +46,11 @@ function App() {
   const [deckLinks, setDeckLinks] = useState({});
   const [deckLinksLoading, setDeckLinksLoading] = useState(false);
   const [deckLinksError, setDeckLinksError] = useState(null);
+  const [opponentDeckChoices, setOpponentDeckChoices] = useState([]);
+  const [opponentLibraries, setOpponentLibraries] = useState({});
+  const [opponentDraws, setOpponentDraws] = useState({});
+  const [opponentDeckLoading, setOpponentDeckLoading] = useState(false);
+  const [opponentDeckErrors, setOpponentDeckErrors] = useState({});
 
   const getNameParts = (name) => {
     if (!name) return [];
@@ -204,6 +209,26 @@ function App() {
     };
     fetchHandImages();
   }, [userHand, imageCache]);
+
+  useEffect(() => {
+    const fetchOpponentDrawImages = async () => {
+      const names = Object.values(opponentDraws)
+        .map((c) => c?.name)
+        .filter(Boolean);
+      const toFetch = names.filter((n) => !imageCache[n]);
+      if (!toFetch.length) return;
+      const batch = await fetchHandBatchImages(toFetch);
+      const results = Object.entries(batch).map(([name, urls]) => ({ name, urls }));
+      setImageCache((prev) => {
+        const next = { ...prev };
+        results.forEach(({ name, urls }) => {
+          if (name && urls?.length) next[name] = urls;
+        });
+        return next;
+      });
+    };
+    fetchOpponentDrawImages();
+  }, [opponentDraws, imageCache]);
 
   const loadCommanders = async (activeFilters = filters) => {
     setIsLoading(true);
@@ -573,7 +598,19 @@ function App() {
     });
   };
 
-  const detectDeckSource = (url = '') => {
+  const getDeckLoader = (source) => {
+    switch (source) {
+      case 'archidekt':
+        return loadArchidektDeckFromUrl;
+      case 'topdeck':
+        return loadTopdeckDeckFromUrl;
+      case 'moxfield':
+      default:
+        return loadMoxfieldDeckFromUrl;
+    }
+  };
+
+  const detectDeckSource = useCallback((url = '') => {
     const trimmed = url.trim();
     if (!trimmed) return null;
     const lower = trimmed.toLowerCase();
@@ -588,7 +625,63 @@ function App() {
     const topdeckIds = extractTopdeckIds(trimmed);
     if (topdeckIds) return 'topdeck';
     return null;
-  };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOpponentDecks = async () => {
+      if (!opponentDeckChoices.length) {
+        setOpponentLibraries({});
+        setOpponentDraws({});
+        setOpponentDeckErrors({});
+        setOpponentDeckLoading(false);
+        return;
+      }
+
+      setOpponentDeckLoading(true);
+      const results = await Promise.all(
+        opponentDeckChoices.map(async (choice) => {
+          const key = `${choice.seat}-${choice.commander.name}`;
+          const deckUrl = choice.entry?.decklist;
+          if (!deckUrl) {
+            return { key, error: 'Decklist unavailable' };
+          }
+          const source = detectDeckSource(deckUrl);
+          if (!source) {
+            return { key, error: 'Unsupported deck link' };
+          }
+          const loader = getDeckLoader(source);
+          try {
+            const { library } = await loader(deckUrl);
+            const draw = library.drawRandom();
+            return { key, library, card: draw.hand[0] };
+          } catch (err) {
+            return { key, error: err.message || 'Failed to load deck' };
+          }
+        })
+      );
+
+      if (cancelled) return;
+      const libs = {};
+      const draws = {};
+      const errors = {};
+      results.forEach((result) => {
+        if (result.library) libs[result.key] = result.library;
+        if (result.card) draws[result.key] = result.card;
+        if (result.error) errors[result.key] = result.error;
+      });
+      setOpponentLibraries(libs);
+      setOpponentDraws(draws);
+      setOpponentDeckErrors(errors);
+      setOpponentDeckLoading(false);
+    };
+
+    loadOpponentDecks();
+    return () => {
+      cancelled = true;
+    };
+  }, [opponentDeckChoices, detectDeckSource]);
 
   const loadDeckFromUrl = async () => {
     setDeckLoading(true);
@@ -599,19 +692,7 @@ function App() {
       if (!source) {
         throw new Error('Enter a valid Moxfield, Archidekt, or TopDeck deck URL');
       }
-      let loader;
-      switch (source) {
-        case 'archidekt':
-          loader = loadArchidektDeckFromUrl;
-          break;
-        case 'topdeck':
-          loader = loadTopdeckDeckFromUrl;
-          break;
-        case 'moxfield':
-        default:
-          loader = loadMoxfieldDeckFromUrl;
-          break;
-      }
+      const loader = getDeckLoader(source);
       const { library, commanders, name } = await loader(deckUrl);
       setUserLibrary(library);
       setUserCommanders(commanders);
@@ -749,7 +830,6 @@ function App() {
                     justifyContent="center"
                   >
                     {(() => {
-                      const deckUseCounts = {};
                       return selection
                       .map((commander, idx) => ({
                         seat: seatAssignments[idx] ?? idx + 2,
@@ -757,6 +837,18 @@ function App() {
                       }))
                       .sort((a, b) => a.seat - b.seat)
                       .map(({ commander, seat }) => {
+                        const selectionKey = `${seat}-${commander.name}`;
+                        const deckChoice = opponentDeckChoices.find(
+                          (entry) =>
+                            entry.seat === seat && entry.commander.name === commander.name
+                        );
+                        const deckEntry = deckChoice?.entry;
+                        const opponentCard = opponentDraws[selectionKey];
+                        const opponentImages = Array.isArray(imageCache[opponentCard?.name])
+                          ? imageCache[opponentCard?.name]
+                          : opponentCard?.name && imageCache[opponentCard?.name]
+                            ? [imageCache[opponentCard?.name]]
+                            : [];
                         const parts = getNameParts(commander.name);
                         const isPartner = parts.length > 1;
                         const cacheImages = imageCache[commander.name];
@@ -834,37 +926,51 @@ function App() {
                                 {deckLinksLoading && !deckLinks[commander.name] && (
                                   <span className="status subtle">Finding a deck...</span>
                                 )}
-                                {(() => {
-                                  const currentCount = deckUseCounts[commander.name] || 0;
-                                  const candidate = deckLinks[commander.name]?.[currentCount];
-                                  deckUseCounts[commander.name] = currentCount + 1;
-
-                                  if (candidate?.decklist) {
-                                    return (
-                                      <a
-                                        href={candidate.decklist}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="deck-link"
-                                      >
-                                        View decklist
-                                        {Number.isFinite(candidate.standing) && (
-                                          <>
-                                            {' '}
-                                            (placed {candidate.standing}
-                                            {candidate.tournamentName
-                                              ? ` @ ${candidate.tournamentName}`
-                                              : ''}
-                                            )
-                                          </>
-                                        )}
-                                      </a>
-                                    );
-                                  }
-                                  return null;
-                                })()}
+                                {deckEntry?.decklist && (
+                                  <a
+                                    href={deckEntry.decklist}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="deck-link"
+                                  >
+                                    View decklist
+                                    {Number.isFinite(deckEntry.standing) && (
+                                      <>
+                                        {' '}
+                                        (placed {deckEntry.standing}
+                                        {deckEntry.tournamentName
+                                          ? ` @ ${deckEntry.tournamentName}`
+                                          : ''}
+                                        )
+                                      </>
+                                    )}
+                                  </a>
+                                )}
                                 {deckLinksError && !deckLinks[commander.name] && (
                                   <span className="status error">Decklist unavailable</span>
+                                )}
+                                {opponentDeckLoading && deckEntry?.decklist && (
+                                  <span className="status subtle">Loading deck...</span>
+                                )}
+                                {opponentDeckErrors[selectionKey] && (
+                                  <span className="status error">
+                                    {opponentDeckErrors[selectionKey]}
+                                  </span>
+                                )}
+                                {opponentCard && (
+                                  <div className="opponent-draw">
+                                    {opponentImages[0] ? (
+                                      <img
+                                        src={opponentImages[0]}
+                                        alt={opponentCard.name}
+                                        loading="lazy"
+                                      />
+                                    ) : (
+                                      <div className="opponent-draw__placeholder">
+                                        {opponentCard.name}
+                                      </div>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>

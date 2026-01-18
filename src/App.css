@@ -332,6 +332,42 @@ body {
   margin-top: auto; /* pins content to bottom of card */
 }
 
+.deck-link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.opponent-draw {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 64px;
+}
+
+.opponent-draw img,
+.opponent-draw__placeholder {
+  width: 64px;
+  height: 89px;
+  border-radius: 6px;
+  border: 1px solid #1f2937;
+  background: rgba(15, 23, 42, 0.6);
+  object-fit: cover;
+}
+
+.opponent-draw__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem;
+  text-align: center;
+  font-size: 0.65rem;
+  color: #cbd5e1;
+}
+
 .selection-list .name,
 .pool-list .name {
   font-weight: 700;
