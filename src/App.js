@@ -798,11 +798,11 @@ function App() {
       <header className="pod-selection">
         <Grid container direction="column" spacing={0.25} alignItems="center">
           <Grid item>
-            <h1>cEDH Mulligan Tool</h1>
+            <h1>MullAgain</h1>
           </Grid>
           <Grid item>
             <p className="subtitle">
-              Picks three commanders, weighted by meta share, and randomizes seat order.
+              A cEDH mulligan tool
             </p>
           </Grid>
 
