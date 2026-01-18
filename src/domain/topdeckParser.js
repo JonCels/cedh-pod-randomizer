@@ -112,6 +112,16 @@ export const parseTopdeckPlainText = (text = '') => {
       return;
     }
 
+    if (/^commanders?[:]?$/i.test(line)) {
+      section = 'commanders';
+      return;
+    }
+
+    if (/^sideboard[:]?$/i.test(line)) {
+      section = 'ignore';
+      return;
+    }
+
     if (section === 'ignore') return;
     const match = line.match(/^(\d+)\s+(.+)$/);
     if (!match) return;
