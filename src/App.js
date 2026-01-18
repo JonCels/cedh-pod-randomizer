@@ -844,13 +844,13 @@ function App() {
                 item
                 xs={0}
                 sm={0}
-                md={2}
-                lg={2}
+                md={1}
+                lg={1}
                 xl={2}
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
 
-              <Grid item xs={16} sm={16} md={6} lg={6} xl={6}>
+              <Grid item xs={16} sm={16} md={7} lg={7} xl={6}>
                 <div className="card selection-card">
                   <div className="card-header">
                     <h2>Random Pod</h2>
@@ -960,70 +960,6 @@ function App() {
                                 </span>
                                 <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
                               </div>
-                              <div className="deck-link-row">
-                                {deckLinksLoading && !deckLinks[commander.name] && (
-                                  <span className="status subtle">Finding a deck...</span>
-                                )}
-                                {deckEntry?.decklist && (
-                                  <a
-                                    href={deckEntry.decklist}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="deck-link"
-                                  >
-                                    View decklist
-                                    {Number.isFinite(deckEntry.standing) && (
-                                      <>
-                                        {' '}
-                                        (placed {deckEntry.standing}
-                                        {deckEntry.tournamentName
-                                          ? ` @ ${deckEntry.tournamentName}`
-                                          : ''}
-                                        )
-                                      </>
-                                    )}
-                                  </a>
-                                )}
-                                {!deckEntry?.decklist &&
-                                  !deckLinksLoading &&
-                                  !deckLinksError && (
-                                    <span className="status subtle">No deck link found</span>
-                                  )}
-                                {deckLinksError && !deckLinks[commander.name] && (
-                                  <span className="status error">Decklist unavailable</span>
-                                )}
-                                {opponentDeckLoading && deckEntry?.decklist && (
-                                  <span className="status subtle">Loading deck...</span>
-                                )}
-                                {opponentDeckErrors[selectionKey] && (
-                                  <span className="status error">
-                                    {opponentDeckErrors[selectionKey]}
-                                  </span>
-                                )}
-                                <button
-                                  type="button"
-                                  className="opponent-draw-btn"
-                                  onClick={() => drawOpponentCard(selectionKey)}
-                                  disabled={!opponentLibraries[selectionKey]}
-                                >
-                                  Draw card
-                                </button>
-                                {opponentCard && (
-                                  <div className="opponent-draw">
-                                    {opponentImages[0] ? (
-                                      <img
-                                        src={opponentImages[0]}
-                                        alt={opponentCard.name}
-                                        loading="lazy"
-                                      />
-                                    ) : (
-                                      <div className="opponent-draw__placeholder">
-                                        {opponentCard.name}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
                             </div>
                           </Grid>
                         );
@@ -1033,7 +969,7 @@ function App() {
                 </div>
               </Grid>
 
-              <Grid item xs={16} sm={16} md={6} lg={6} xl={6}>
+              <Grid item xs={16} sm={16} md={7} lg={7} xl={6}>
                 <div className="card user-deck">
                   <div className="card-header">
                     <h2>Your Deck</h2>
@@ -1170,8 +1106,8 @@ function App() {
                 item
                 xs={0}
                 sm={0}
-                md={2}
-                lg={2}
+                md={1}
+                lg={1}
                 xl={2}
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
