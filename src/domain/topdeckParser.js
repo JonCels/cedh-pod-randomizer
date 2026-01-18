@@ -1,5 +1,6 @@
 import { createCard } from './card.js';
 import { createLibrary } from './library.js';
+import { resolveProxyBase } from '../api/proxyBase.js';
 
 /**
  * Extract TopDeck tournament + player ids from a deck URL.
@@ -187,7 +188,7 @@ export async function loadTopdeckDeckFromUrl(
   deckUrl,
   {
     fetcher = fetch,
-    apiBase = process.env.REACT_APP_TOPDECK_PROXY_BASE || '/api/topdeck',
+    apiBase = resolveProxyBase(process.env.REACT_APP_TOPDECK_PROXY_BASE, '/api/topdeck'),
     apiKey = '',
     headers = {
       Accept: 'application/json',

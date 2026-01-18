@@ -53,7 +53,7 @@ module.exports = function (app) {
   app.use(
     ['/api/topdeck', '/topdeck'],
     createProxyMiddleware({
-      target: 'https://topdeck.gg',
+      target: 'https://topdeck.gg/api',
       changeOrigin: true,
       pathRewrite: (path) =>
         path.replace(/^\/api\/topdeck/, '').replace(/^\/topdeck/, ''),

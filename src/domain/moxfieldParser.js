@@ -1,5 +1,6 @@
 import { createCard } from './card.js';
 import { createLibrary } from './library.js';
+import { resolveProxyBase } from '../api/proxyBase.js';
 
 /**
  * Extract a deck id from a Moxfield URL or return the raw string if it looks like an id.
@@ -115,7 +116,7 @@ export async function loadMoxfieldDeckFromUrl(
   deckUrl,
   {
     fetcher = fetch,
-    apiBase = process.env.REACT_APP_MOXFIELD_PROXY_BASE || '/api/moxapi',
+    apiBase = resolveProxyBase(process.env.REACT_APP_MOXFIELD_PROXY_BASE, '/api/moxapi'),
     headers = {
       Accept: 'application/json',
       'Content-Type': 'application/json',

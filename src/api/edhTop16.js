@@ -1,5 +1,9 @@
-const API_BASE_URL =
-  process.env.REACT_APP_EDHTOP16_API || 'https://edhtop16.com/api';
+import { resolveProxyBase } from './proxyBase.js';
+
+const API_BASE_URL = resolveProxyBase(
+  process.env.REACT_APP_EDHTOP16_API,
+  '/edhapi'
+);
 
 const defaultHeaders = {
   Accept: 'application/json',

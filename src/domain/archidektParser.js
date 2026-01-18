@@ -1,5 +1,6 @@
 import { createCard } from './card.js';
 import { createLibrary } from './library.js';
+import { resolveProxyBase } from '../api/proxyBase.js';
 
 /**
  * Extract an Archidekt deck id from a URL or raw id.
@@ -84,7 +85,7 @@ export async function loadArchidektDeckFromUrl(
   deckUrl,
   {
     fetcher = fetch,
-    apiBase = process.env.REACT_APP_ARCHIDEKT_PROXY_BASE || '/api/archidekt',
+    apiBase = resolveProxyBase(process.env.REACT_APP_ARCHIDEKT_PROXY_BASE, '/api/archidekt'),
     headers = {
       Accept: 'application/json',
     },
