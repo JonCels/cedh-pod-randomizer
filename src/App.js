@@ -796,35 +796,25 @@ function App() {
   return (
     <div className="App">
       <header className="pod-selection">
-        <Grid container direction="column" spacing={0.25} alignItems="center">
-          <Grid item>
-            <h1>MullAgain</h1>
-          </Grid>
-          <Grid item>
-            <p className="subtitle">
-              A cEDH mulligan tool
-            </p>
-          </Grid>
+        <div className="brand-logos brand-top-left">
+          <img
+            src="/mullagain_logo_transparent.png"
+            alt="MullAgain logo"
+            className="brand-mark"
+          />
+        </div>
 
-          <Grid item>
-            <Grid container spacing={1.5} justifyContent="center" alignItems="center" className="controls">
-              <Grid item>
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={() => rollSelection()}
-                  disabled={!commanders.length}
-                >
-                  Randomize Pod
-                </button>
-              </Grid>
-              <Grid item>
-                <p className="note">
-                  Click to reroll anytime.
-                </p>
-              </Grid>
+          <Grid container direction="column" spacing={0.75} alignItems="center">
+            <Grid item>
+              <h1>MULLAGAIN</h1>
             </Grid>
-          </Grid>
+            <Grid item>
+              <p className="subtitle">
+                Load your deck to practice mulligans with full pod knowledge.
+                <br />
+                Picks three commanders, weighted by meta share, and randomizes seat order.
+              </p>
+            </Grid>
 
           {isLoading && (
             <Grid item>
@@ -849,6 +839,179 @@ function App() {
                 xl={2}
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
+            
+            
+              <Grid item xs={16} sm={16} md={7} lg={7} xl={6}>
+                <div className="card user-deck">
+                  <div className="card-header">
+                    <h2>Your Deck</h2>
+                      <small>Paste a Moxfield, Archidekt, or TopDeck deck link</small>
+                  </div>
+                  <p className="note seat-note">
+                    <strong>Your seat this game: {userSeat}</strong>
+                  </p>
+                  <Grid container spacing={1.5} alignItems="center" className="deck-url-row">
+                    <Grid item xs={12} sm={9}>
+                      <input
+                        id="deckUrl"
+                        type="url"
+                        className="deck-url-input"
+                        value={deckUrl}
+                        onChange={(e) => setDeckUrl(e.target.value)}
+                        placeholder="https://www.moxfield.com/decks/... or https://archidekt.com/decks/... or https://topdeck.gg/deck/..."
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <div className="deck-actions inline load-actions">
+                        <button
+                          type="button"
+                          className="primary"
+                          onClick={loadDeckFromUrl}
+                          disabled={deckLoading || !deckUrl}
+                        >
+                          {deckLoading ? 'Loading...' : 'Load Decklist'}
+                        </button>
+                      </div>
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Grid container spacing={1}>
+                        <Grid item xs={12} sm={4}>
+                          <div className="deck-actions">
+                            <button
+                              type="button"
+                              onClick={drawUserHand}
+                              disabled={!userLibrary}
+                              className="full-width-btn"
+                            >
+                              {userHand.length ? 'Mulligan' : 'Draw 7'}
+                            </button>
+                          </div>
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <div className="deck-actions">
+                            <button
+                              type="button"
+                              disabled={!userLibrary}
+                              onClick={() => {}}
+                              className="full-width-btn"
+                            >
+                              Draw
+                            </button>
+                          </div>
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                          <div className="deck-actions">
+                            <button
+                              type="button"
+                              disabled={!userLibrary}
+                              onClick={() => {}}
+                              className="full-width-btn"
+                            >
+                              Search...
+                            </button>
+                          </div>
+                        </Grid>
+                      </Grid>
+                    </Grid>
+                  </Grid>
+                  {userCommanders.length > 0 && (
+                    <Grid container component="ul" className="selection-list" justifyContent="center">
+                      {(() => {
+                        const asArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
+                        const paired = userCommanders.length > 1
+                          ? [{
+                              name: `${userCommanders[0].name} / ${userCommanders[1].name}`,
+                              parts: [userCommanders[0].name, userCommanders[1].name],
+                            }]
+                          : userCommanders.map((c) => ({ name: c.name, parts: [c.name] }));
+
+                        return paired.map((entry) => {
+                          const images = entry.parts
+                            .map((p) => asArray(imageCache[p]))
+                            .flat()
+                            .slice(0, 2);
+                          const hasSplit = images.length > 1;
+                          const topImage = images[0];
+
+                          return (
+                            <Grid
+                              item
+                              xs={12}
+                              component="li"
+                              key={`user-commander-${entry.name}`}
+                              className={`commander-card${images.length ? ' has-bg' : ''}`}
+                              style={
+                                !hasSplit && topImage
+                                  ? {
+                                      backgroundImage: `url(${topImage})`,
+                                      backgroundPosition: 'center 12.5%',
+                                    }
+                                  : undefined
+                              }
+                            >
+                              {hasSplit && (
+                                <div className="card-art-split">
+                                  {images.slice(0, 2).map((url, artIdx) => (
+                                    <div
+                                      key={`${entry.name}-art-${artIdx}`}
+                                      className="card-art"
+                                      style={{
+                                        backgroundImage: `url(${url})`,
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                              <div className="commander-card__content">
+                                <div className="name">{entry.name}</div>
+                              </div>
+                            </Grid>
+                          );
+                        });
+                      })()}
+                    </Grid>
+                  )}
+                  {deckError && <p className="status error">{deckError}</p>}
+                  {deckStatus && <p className="status">{deckStatus}</p>}
+                  {userHand.length > 0 && (
+                    <div className="hand-preview">
+                      <p className="note">Opening hand:</p>
+                      <Grid container spacing={0} component="ul" className="hand-grid">
+                        {userHand.map((card, idx) => {
+                          const cached = imageCache[card.name];
+                          const images = Array.isArray(cached) ? cached : cached ? [cached] : [];
+                          const topImage = images[0];
+                          // split 4 on top row, 3 on bottom; use xs=6 to force 2 cols on mobile, md for desktop layout
+                          return (
+                            <Grid
+                              item
+                              xs="auto"
+                              sm="auto"
+                              md="auto"
+                              lg="auto"
+                              component="li"
+                              key={card.id || `${card.name}-${idx}`}
+                              className="hand-card"
+                            >
+                              {topImage ? (
+                                <img
+                                  className="hand-card__img"
+                                  src={topImage}
+                                  alt={card.name}
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <div className="hand-card__placeholder">{card.name}</div>
+                              )}
+                            </Grid>
+                          );
+                        })}
+                      </Grid>
+                    </div>
+                  )}
+                </div>
+              </Grid>
+
 
               <Grid item xs={16} sm={16} md={7} lg={7} xl={6}>
                 <div className="card selection-card">
@@ -856,10 +1019,17 @@ function App() {
                     <h2>Random Pod</h2>
                     <small>Data from edhtop16.com</small>
                   </div>
-
-                  <p className="note seat-note">
-                    <strong>Your seat this game: {userSeat}</strong>
-                  </p>
+                  <div className="controls inline randomize-controls">
+                    <button
+                      type="button"
+                      className="primary"
+                      onClick={() => rollSelection()}
+                      disabled={!commanders.length}
+                    >
+                      Randomize Pod
+                    </button>
+                    <p className="note">Click to reroll anytime.</p>
+                  </div>
 
                   <Grid
                     container
@@ -997,139 +1167,6 @@ function App() {
                 </div>
               </Grid>
 
-              <Grid item xs={16} sm={16} md={7} lg={7} xl={6}>
-                <div className="card user-deck">
-                  <div className="card-header">
-                    <h2>Your Deck</h2>
-                      <small>Paste a Moxfield, Archidekt, or TopDeck deck link</small>
-                  </div>
-                  <Grid container spacing={1} alignItems="center" className="deck-url-row">
-                    <Grid item xs={12} sm={8}>
-                      <input
-                        id="deckUrl"
-                        type="url"
-                        value={deckUrl}
-                        onChange={(e) => setDeckUrl(e.target.value)}
-                          placeholder="https://www.moxfield.com/decks/... or https://archidekt.com/decks/... or https://topdeck.gg/deck/..."
-                      />
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                      <div className="deck-actions inline">
-                        <button
-                          type="button"
-                          className="primary"
-                            onClick={loadDeckFromUrl}
-                          disabled={deckLoading || !deckUrl}
-                        >
-                          {deckLoading ? 'Loading...' : 'Load Decklist'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={drawUserHand}
-                          disabled={!userLibrary}
-                        >
-                          {userHand.length ? 'Mulligan' : 'Draw Opening 7'}
-                        </button>
-                      </div>
-                    </Grid>
-                  </Grid>
-                  {userCommanders.length > 0 && (
-                    <Grid container component="ul" className="selection-list" justifyContent="center">
-                      {(() => {
-                        const asArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
-                        const paired = userCommanders.length > 1
-                          ? [{
-                              name: `${userCommanders[0].name} / ${userCommanders[1].name}`,
-                              parts: [userCommanders[0].name, userCommanders[1].name],
-                            }]
-                          : userCommanders.map((c) => ({ name: c.name, parts: [c.name] }));
-
-                        return paired.map((entry) => {
-                          const images = entry.parts
-                            .map((p) => asArray(imageCache[p]))
-                            .flat()
-                            .slice(0, 2);
-                          const hasSplit = images.length > 1;
-                          const topImage = images[0];
-
-                          return (
-                            <Grid
-                              item
-                              xs={12}
-                              component="li"
-                              key={`user-commander-${entry.name}`}
-                              className={`commander-card${images.length ? ' has-bg' : ''}`}
-                              style={
-                                !hasSplit && topImage
-                                  ? {
-                                      backgroundImage: `url(${topImage})`,
-                                      backgroundPosition: 'center 12.5%',
-                                    }
-                                  : undefined
-                              }
-                            >
-                              {hasSplit && (
-                                <div className="card-art-split">
-                                  {images.slice(0, 2).map((url, artIdx) => (
-                                    <div
-                                      key={`${entry.name}-art-${artIdx}`}
-                                      className="card-art"
-                                      style={{
-                                        backgroundImage: `url(${url})`,
-                                      }}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                              <div className="commander-card__content">
-                                <div className="name">{entry.name}</div>
-                              </div>
-                            </Grid>
-                          );
-                        });
-                      })()}
-                    </Grid>
-                  )}
-                  {deckError && <p className="status error">{deckError}</p>}
-                  {deckStatus && <p className="status">{deckStatus}</p>}
-                  {userHand.length > 0 && (
-                    <div className="hand-preview">
-                      <p className="note">Opening hand:</p>
-                      <Grid container spacing={0} component="ul" className="hand-grid">
-                        {userHand.map((card, idx) => {
-                          const cached = imageCache[card.name];
-                          const images = Array.isArray(cached) ? cached : cached ? [cached] : [];
-                          const topImage = images[0];
-                          // split 4 on top row, 3 on bottom; use xs=6 to force 2 cols on mobile, md for desktop layout
-                          return (
-                            <Grid
-                              item
-                              xs="auto"
-                              sm="auto"
-                              md="auto"
-                              lg="auto"
-                              component="li"
-                              key={card.id || `${card.name}-${idx}`}
-                              className="hand-card"
-                            >
-                              {topImage ? (
-                                <img
-                                  className="hand-card__img"
-                                  src={topImage}
-                                  alt={card.name}
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="hand-card__placeholder">{card.name}</div>
-                              )}
-                            </Grid>
-                          );
-                        })}
-                      </Grid>
-                    </div>
-                  )}
-                </div>
-              </Grid>
               <Grid
                 item
                 xs={0}

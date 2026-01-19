@@ -1,4 +1,4 @@
-# MullAgain
+# MULLAGAIN
 
 A cEDH mulligan tool
 

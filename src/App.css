@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;600;700&display=swap');
+
 :root {
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+  font-family: 'Quicksand', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
     sans-serif;
   color-scheme: dark;
 }
@@ -8,6 +10,8 @@ body {
   margin: 0;
   background: #0f172a;
   color: #e2e8f0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
+    Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
 }
 
 .App {
@@ -20,32 +24,63 @@ body {
   padding: 2.5rem 1.5rem 1.5rem;
   text-align: center;
   background: radial-gradient(circle at 20% 20%, #1d2a44, #0f172a 60%);
+  position: relative;
 }
 
 .pod-selection h1 {
   margin: 0 0 0.5rem;
   font-size: 2.4rem;
+  color: rgb(200, 162, 74);
+  font-family: 'Quicksand', 'Segoe UI', system-ui, sans-serif;
+}
+
+.brand-logos {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.brand-mark {
+  width: 128px;
+  height: auto;
+}
+
+.brand-top-left {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
 }
 
 .subtitle {
-  margin: 0 0 1.5rem;
+  margin: 0 0 2.25rem;
   color: #cbd5e1;
 }
 
 .controls {
-
   margin: 0 auto 1rem;
 }
 
+.controls.inline {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: flex-start;
+}
+
+.randomize-controls {
+  padding-left: 1rem;
+  margin-top: 0.75rem;
+}
+
 .primary {
-  background: linear-gradient(135deg, #60a5fa, #a855f7);
+  background: linear-gradient(135deg, rgb(200, 162, 74), rgb(160, 110, 20));
   color: #0b1021;
   border: none;
   padding: 0.8rem 1.4rem;
   border-radius: 10px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 10px 30px rgba(96, 165, 250, 0.35);
+  box-shadow: 0 10px 30px rgba(200, 162, 74, 0.28);
   margin-left: 0.25rem;
   margin-right: 0.25rem;
 }
@@ -66,6 +101,7 @@ body {
 
 .seat-note {
   margin-bottom: 0.85rem;
+  font-size: 1.25rem;
 }
 
 .filters {
@@ -88,7 +124,7 @@ body {
 
 .filter-group label {
   font-size: 0.95rem;
-  color: #cbd5e1;
+  color: rgb(200, 162, 74);
 }
 
 .filter-group select,
@@ -134,6 +170,7 @@ body {
 .card-header h3 {
   margin: 0;
   font-size: 1.3rem;
+  color: rgb(200, 162, 74);
 }
 
 .card-header small {
@@ -152,16 +189,31 @@ body {
   flex-wrap: wrap;
 }
 
-.deck-actions.inline {
-  justify-content: flex-end;
-}
-
 .deck-url-row input {
   width: 100%;
 }
 
-.deck-actions.inline button {
-  min-width: 150px;
+.deck-url-row {
+  row-gap: 0.75rem;
+  align-items: center;
+  padding: 0;
+}
+
+.deck-url-input {
+  padding: 0.75rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid #1f2937;
+  background: #0b1220;
+  color: #e2e8f0;
+  font-size: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  box-sizing: border-box;
+}
+
+.deck-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .deck-actions button {
@@ -171,12 +223,39 @@ body {
   background: #0b1220;
   color: #e2e8f0;
   cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.full-width-btn {
+  width: 100%;
 }
 
 .deck-actions button.primary {
-  background: linear-gradient(135deg, #60a5fa, #a855f7);
+  background: linear-gradient(135deg, rgb(200, 162, 74), rgb(160, 110, 20));
   color: #0b1021;
   border: none;
+}
+
+.deck-actions button:not(.primary) {
+  background: linear-gradient(135deg, #0f1629, #0c1322);
+  border: 1px solid rgba(200, 162, 74, 0.35);
+  box-shadow: 0 6px 18px rgba(12, 19, 34, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.deck-actions button:not(.primary):hover:enabled {
+  background: linear-gradient(135deg, #121c33, #0f172a);
+  border-color: rgba(200, 162, 74, 0.55);
+  box-shadow: 0 8px 20px rgba(200, 162, 74, 0.18);
+}
+
+.deck-actions button:not(.primary):disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.load-actions button {
+  width: 100%;
 }
 
 .hand-preview ul {
@@ -272,6 +351,7 @@ body {
   text-align: left;
   width: 100%;
   box-sizing: border-box;
+  color: #e2e8f0;
 }
 
 .selection-list li {
