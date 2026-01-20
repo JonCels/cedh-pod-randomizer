@@ -51,6 +51,23 @@ body {
   left: 1rem;
 }
 
+@media (max-width: 768px) {
+  .pod-selection {
+    padding-top: 1.5rem; /* Reduce top padding since logo is now in flow */
+  }
+
+  .brand-top-left {
+    position: static;
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+
+  .brand-mark {
+    width: 96px; /* Slightly smaller on mobile */
+  }
+}
+
 .subtitle {
   margin: 0 0 2.25rem;
   color: #cbd5e1;
