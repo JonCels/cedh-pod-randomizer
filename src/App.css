@@ -143,7 +143,7 @@ body {
 }
 
 .status {
-  margin: 0.5rem 0;
+  margin: 0rem 0;
 }
 
 .status.error {
@@ -282,8 +282,6 @@ body {
 
 .hand-card {
   position: relative;
-  width: 135px;
-  height: 189px; /* 2.5 x 3.5 ratio */
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid #1f2937;
@@ -548,4 +546,260 @@ body {
 .helper {
   margin: 0 0 1rem;
   color: #94a3b8;
+}
+
+/* Search interface styles */
+.search-interface {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.8);
+  border-radius: 10px;
+  border: 1px solid #1f2937;
+}
+
+.search-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.search-input {
+  flex: 1;
+  padding: 0.75rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid #1f2937;
+  background: #0b1220;
+  color: #e2e8f0;
+  font-size: 1rem;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: rgb(200, 162, 74);
+  box-shadow: 0 0 0 2px rgba(200, 162, 74, 0.2);
+}
+
+.search-close-btn {
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #1f2937;
+  background: #0b1220;
+  color: #e2e8f0;
+  cursor: pointer;
+  font-size: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 160ms ease;
+}
+
+.search-close-btn:hover {
+  background: #1f2937;
+  border-color: rgba(200, 162, 74, 0.35);
+}
+
+.search-results {
+  max-height: 200px;
+  overflow-y: auto;
+  border-radius: 8px;
+  border: 1px solid #1f2937;
+  background: #0b1220;
+}
+
+.search-result-item {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  color: #e2e8f0;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 160ms ease;
+  border-bottom: 1px solid rgba(31, 41, 55, 0.5);
+}
+
+.search-result-item:hover {
+  background: rgba(200, 162, 74, 0.1);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-no-results {
+  padding: 1rem;
+  text-align: center;
+  color: #64748b;
+  font-style: italic;
+}
+
+/* Paste Decklist Popup Styles */
+.paste-decklist-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.paste-decklist-popup {
+  background: #0f172a;
+  border-radius: 12px;
+  border: 1px solid #1f2937;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.paste-decklist-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #1f2937;
+}
+
+.paste-decklist-header h3 {
+  margin: 0;
+  color: rgb(200, 162, 74);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.paste-decklist-close-btn {
+  background: transparent;
+  border: none;
+  color: #e2e8f0;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 160ms ease;
+}
+
+.paste-decklist-close-btn:hover {
+  background: rgba(200, 162, 74, 0.1);
+}
+
+.paste-decklist-content {
+  padding: 1.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.paste-decklist-textarea {
+  width: 100%;
+  min-height: 300px;
+  padding: 1rem;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  background: #0b1220;
+  color: #e2e8f0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.paste-decklist-textarea:focus {
+  outline: none;
+  border-color: rgb(200, 162, 74);
+  box-shadow: 0 0 0 2px rgba(200, 162, 74, 0.2);
+}
+
+.paste-decklist-instructions {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 8px;
+  border: 1px solid #1f2937;
+}
+
+.paste-decklist-instructions p {
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.paste-decklist-instructions ul {
+  margin: 0 0 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.paste-decklist-instructions li {
+  margin-bottom: 0.25rem;
+  color: #94a3b8;
+}
+
+.paste-decklist-instructions li:last-child {
+  margin-bottom: 0;
+}
+
+.paste-decklist-instructions code {
+  background: rgba(31, 41, 55, 0.5);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  color: rgb(200, 162, 74);
+}
+
+.paste-decklist-instructions p:last-child {
+  font-size: 0.9rem;
+  font-weight: normal;
+  color: #64748b;
+  margin-top: 0.5rem;
+}
+
+.paste-decklist-actions {
+  padding: 1rem 1.5rem 1.5rem;
+  border-top: 1px solid #1f2937;
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.paste-decklist-cancel-btn,
+.paste-decklist-load-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid #1f2937;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 160ms ease;
+}
+
+.paste-decklist-cancel-btn {
+  background: transparent;
+  color: #e2e8f0;
+}
+
+.paste-decklist-cancel-btn:hover {
+  background: #1f2937;
+  border-color: rgba(200, 162, 74, 0.35);
+}
+
+.paste-decklist-load-btn {
+  background: linear-gradient(135deg, rgb(200, 162, 74), rgb(160, 110, 20));
+  color: #0b1021;
+  border: none;
+}
+
+.paste-decklist-load-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, rgb(220, 182, 94), rgb(180, 130, 40));
+}
+
+.paste-decklist-load-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

@@ -51,6 +51,10 @@ function App() {
   const [opponentDraws, setOpponentDraws] = useState({});
   const [opponentDeckLoading, setOpponentDeckLoading] = useState(false);
   const [opponentDeckErrors, setOpponentDeckErrors] = useState({});
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showPasteDecklist, setShowPasteDecklist] = useState(false);
+  const [pasteDecklistText, setPasteDecklistText] = useState('');
 
   const getNameParts = (name) => {
     if (!name) return [];
@@ -793,6 +797,185 @@ function App() {
     }
   };
 
+  const drawSingleCard = () => {
+    if (!userLibrary) return;
+
+    const maxAttempts = 3;
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      const draw = userLibrary.drawRandom();
+      const drawnCard = draw.hand[0];
+
+      if (!drawnCard) return; // No cards left to draw
+
+      // Check if this card would create a duplicate of a singleton
+      const cardName = drawnCard.name;
+      const deckCount = deckNameCounts[cardName] || 0;
+      const handCounts = userHand.reduce((map, card) => {
+        if (!card?.name) return map;
+        map[card.name] = (map[card.name] || 0) + 1;
+        return map;
+      }, {});
+
+      const currentHandCount = handCounts[cardName] || 0;
+      const hasBadDup = deckCount <= 1 && currentHandCount >= 1;
+
+      if (!hasBadDup) {
+        // eslint-disable-next-line no-console
+        console.log('Drew card:', drawnCard.name);
+        setUserLibrary(draw.library);
+        setUserHand(prev => [...prev, drawnCard]);
+        return;
+      }
+
+      // eslint-disable-next-line no-console
+      console.warn('Would create duplicate singleton; retrying draw', {
+        attempt: attempt + 1,
+        cardName,
+        deckCount,
+        currentHandCount,
+      });
+
+      if (attempt === maxAttempts - 1) {
+        // Fall back to drawing anyway after retries
+        setUserLibrary(draw.library);
+        setUserHand(prev => [...prev, drawnCard]);
+      }
+    }
+  };
+
+  const toggleSearch = () => {
+    setShowSearch(prev => !prev);
+    setSearchTerm('');
+  };
+
+  const searchCards = (term) => {
+    if (!userLibrary || !term.trim()) return [];
+
+    const searchTerm = term.toLowerCase().trim();
+    return userLibrary.cards.filter(card =>
+      card.name && card.name.toLowerCase().includes(searchTerm)
+    );
+  };
+
+  const selectCardFromSearch = (card) => {
+    if (!card) return;
+
+    // Remove the selected card from the library
+    const remainingCards = userLibrary.cards.filter(c => c.id !== card.id);
+    const updatedLibrary = {
+      ...userLibrary,
+      cards: remainingCards
+    };
+
+    // Add the card to the hand
+    setUserLibrary(updatedLibrary);
+    setUserHand(prev => [...prev, card]);
+    setShowSearch(false);
+    setSearchTerm('');
+
+    console.log('Selected card from search:', card.name);
+  };
+
+  const parsePastedDecklist = (text) => {
+    const lines = text.split('\n').map(line => line.trim());
+
+    const mainboardCards = [];
+    const commanders = [];
+    let inSideboard = false;
+    let foundEmptyLineAfterSideboard = false;
+
+    for (const line of lines) {
+      // Skip empty lines
+      if (!line) {
+        if (inSideboard) {
+          foundEmptyLineAfterSideboard = true;
+        }
+        continue;
+      }
+
+      if (line.toUpperCase() === 'SIDEBOARD:') {
+        inSideboard = true;
+        continue;
+      }
+
+      // Skip lines that don't start with a number
+      if (!line.match(/^\d+/)) continue;
+
+      // Extract card name (everything after the first space)
+      const cardName = line.replace(/^\d+\s+/, '');
+
+      if (!inSideboard) {
+        // Mainboard cards - create multiple copies based on the count
+        const count = parseInt(line.match(/^\d+/)[0], 10);
+        for (let i = 0; i < count; i++) {
+          mainboardCards.push({
+            name: cardName,
+            id: `${cardName}-${i}-${Date.now()}`, // Unique ID for each copy
+          });
+        }
+      } else if (inSideboard && foundEmptyLineAfterSideboard) {
+        // After sideboard and after an empty line, these are commanders (1 copy each)
+        commanders.push({
+          name: cardName,
+        });
+      }
+      // If in sideboard but haven't found empty line yet, ignore (sideboard cards)
+    }
+
+    return { mainboardCards, commanders };
+  };
+
+  const loadDeckFromPaste = async () => {
+    if (!pasteDecklistText.trim()) return;
+
+    setDeckLoading(true);
+    setDeckError(null);
+    setDeckStatus('Parsing decklist...');
+
+    try {
+      const { mainboardCards, commanders } = parsePastedDecklist(pasteDecklistText);
+
+      if (mainboardCards.length === 0) {
+        throw new Error('No mainboard cards found in the pasted decklist');
+      }
+
+      // Create library from mainboard cards
+      const { createLibrary } = await import('./domain/library.js');
+      const library = createLibrary({
+        name: 'Pasted Decklist',
+        cards: mainboardCards,
+      });
+
+      setUserLibrary(library);
+      setUserCommanders(commanders);
+
+      // Track counts for duplicate detection during draws
+      const nameCounts = library.cards.reduce((map, card) => {
+        if (!card?.name) return map;
+        map[card.name] = (map[card.name] || 0) + 1;
+        return map;
+      }, {});
+      setDeckNameCounts(nameCounts);
+
+      setDeckStatus(
+        `Loaded ${library.cards.length} cards from pasted decklist. Click Draw 7 to see your hand.`
+      );
+      setUserHand([]);
+      setShowPasteDecklist(false);
+      setPasteDecklistText('');
+
+      await prefetchHandImages(library.cards);
+    } catch (err) {
+      setDeckError(err.message || 'Failed to parse decklist');
+      setUserLibrary(null);
+      setUserCommanders([]);
+      setUserHand([]);
+      setDeckStatus('');
+    } finally {
+      setDeckLoading(false);
+    }
+  };
+
   return (
     <div className="App">
       <header className="pod-selection">
@@ -840,143 +1023,288 @@ function App() {
                 sx={{ display: { xs: 'none', md: 'block' } }}
               />
             
-            
               <Grid item xs={16} sm={16} md={7} lg={7} xl={6}>
                 <div className="card user-deck">
                   <div className="card-header">
                     <h2>Your Deck</h2>
-                      <small>Paste a Moxfield, Archidekt, or TopDeck deck link</small>
+                      <small>
+                        Load a Moxfield, Archidekt, or TopDeck deck link 
+                        <br/>
+                        or paste a decklist directly
+                      </small>
                   </div>
+
                   <p className="note seat-note">
                     <strong>Your seat this game: {userSeat}</strong>
                   </p>
+                  
                   <Grid container spacing={1.5} alignItems="center" className="deck-url-row">
-                    <Grid item xs={12} sm={9}>
+                    <Grid item xs={12} sm={6.5}>
                       <input
                         id="deckUrl"
                         type="url"
                         className="deck-url-input"
                         value={deckUrl}
                         onChange={(e) => setDeckUrl(e.target.value)}
-                        placeholder="https://www.moxfield.com/decks/... or https://archidekt.com/decks/... or https://topdeck.gg/deck/..."
+                        placeholder="eg. https://www.moxfield.com/decks/..."
                       />
                     </Grid>
-                    <Grid item xs={12} sm={3}>
-                      <div className="deck-actions inline load-actions">
+
+                    <Grid item xs={6} sm={2.75}>
+                        <div className="deck-actions inline load-actions">
                         <button
-                          type="button"
-                          className="primary"
-                          onClick={loadDeckFromUrl}
-                          disabled={deckLoading || !deckUrl}
+                            type="button"
+                            className="primary"
+                            onClick={loadDeckFromUrl}
+                            disabled={deckLoading || !deckUrl}
                         >
-                          {deckLoading ? 'Loading...' : 'Load Decklist'}
+                            {deckLoading ? 'Loading...' : 'Load Decklist'}
                         </button>
-                      </div>
+                        </div>
                     </Grid>
+
+                    <Grid item xs={6} sm={2.75}>
+                        <div className="deck-actions inline load-actions">
+                        <button
+                            type="button"
+                            onClick={() => setShowPasteDecklist(true)}
+                            disabled={deckLoading}
+                        >
+                            Paste Decklist
+                        </button>
+                        </div>
+                    </Grid>
+
+                    {/* Commander display */}
+                    {userCommanders.length > 0 && (
+                      <Grid container component="ul" className="selection-list" justifyContent="center">
+                        {(() => {
+                          const asArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
+                          const paired = userCommanders.length > 1
+                            ? [{
+                                name: `${userCommanders[0].name} / ${userCommanders[1].name}`,
+                                parts: [userCommanders[0].name, userCommanders[1].name],
+                              }]
+                            : userCommanders.map((c) => ({ name: c.name, parts: [c.name] }));
+
+                          return paired.map((entry) => {
+                            const images = entry.parts
+                              .map((p) => asArray(imageCache[p]))
+                              .flat()
+                              .slice(0, 2);
+                            const hasSplit = images.length > 1;
+                            const topImage = images[0];
+
+                            return (
+                              <Grid
+                                item
+                                xs={12}
+                                component="li"
+                                key={`user-commander-${entry.name}`}
+                                className={`commander-card${images.length ? ' has-bg' : ''}`}
+                                style={
+                                  !hasSplit && topImage
+                                    ? {
+                                        backgroundImage: `url(${topImage})`,
+                                        backgroundPosition: 'center 12.5%',
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {hasSplit && (
+                                  <div className="card-art-split">
+                                    {images.slice(0, 2).map((url, artIdx) => (
+                                      <div
+                                        key={`${entry.name}-art-${artIdx}`}
+                                        className="card-art"
+                                        style={{
+                                          backgroundImage: `url(${url})`,
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="commander-card__content">
+                                  <div className="name">{entry.name}</div>
+                                </div>
+                              </Grid>
+                            );
+                          });
+                        })()}
+                      </Grid>
+                    )}
+
+                    {deckError && 
                     <Grid item xs={12}>
-                      <Grid container spacing={1}>
-                        <Grid item xs={12} sm={4}>
-                          <div className="deck-actions">
-                            <button
-                              type="button"
-                              onClick={drawUserHand}
-                              disabled={!userLibrary}
-                              className="full-width-btn"
-                            >
-                              {userHand.length ? 'Mulligan' : 'Draw 7'}
-                            </button>
-                          </div>
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                          <div className="deck-actions">
-                            <button
-                              type="button"
-                              disabled={!userLibrary}
-                              onClick={() => {}}
-                              className="full-width-btn"
-                            >
-                              Draw
-                            </button>
-                          </div>
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                          <div className="deck-actions">
-                            <button
-                              type="button"
-                              disabled={!userLibrary}
-                              onClick={() => {}}
-                              className="full-width-btn"
-                            >
-                              Search...
-                            </button>
-                          </div>
+                        <p className="status error">{deckError}</p>
+                    </Grid>
+                    }
+                    {deckStatus && <Grid item xs={12}>
+                        <p className="status">{deckStatus}</p>
+                    </Grid>
+                    }
+
+                    {/* Deck controls - only shown after deck is loaded */}
+                    {userLibrary && (
+                      <Grid item xs={12}>
+                        <Grid container spacing={1}>
+                          <Grid item xs={12} sm={4}>
+                            <div className="deck-actions">
+                              <button
+                                type="button"
+                                onClick={drawUserHand}
+                                disabled={!userLibrary}
+                                className="full-width-btn"
+                              >
+                                {userHand.length ? 'Mulligan' : 'Draw 7'}
+                              </button>
+                            </div>
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <div className="deck-actions">
+                              <button
+                                type="button"
+                                disabled={!userLibrary}
+                                onClick={drawSingleCard}
+                                className="full-width-btn"
+                              >
+                                Draw
+                              </button>
+                            </div>
+                          </Grid>
+                          <Grid item xs={12} sm={4}>
+                            <div className="deck-actions">
+                              <button
+                                type="button"
+                                disabled={!userLibrary}
+                                onClick={toggleSearch}
+                                className="full-width-btn"
+                              >
+                                Search...
+                              </button>
+                            </div>
+                          </Grid>
                         </Grid>
                       </Grid>
-                    </Grid>
+                    )}
                   </Grid>
-                  {userCommanders.length > 0 && (
-                    <Grid container component="ul" className="selection-list" justifyContent="center">
-                      {(() => {
-                        const asArray = (val) => (Array.isArray(val) ? val : val ? [val] : []);
-                        const paired = userCommanders.length > 1
-                          ? [{
-                              name: `${userCommanders[0].name} / ${userCommanders[1].name}`,
-                              parts: [userCommanders[0].name, userCommanders[1].name],
-                            }]
-                          : userCommanders.map((c) => ({ name: c.name, parts: [c.name] }));
 
-                        return paired.map((entry) => {
-                          const images = entry.parts
-                            .map((p) => asArray(imageCache[p]))
-                            .flat()
-                            .slice(0, 2);
-                          const hasSplit = images.length > 1;
-                          const topImage = images[0];
-
-                          return (
-                            <Grid
-                              item
-                              xs={12}
-                              component="li"
-                              key={`user-commander-${entry.name}`}
-                              className={`commander-card${images.length ? ' has-bg' : ''}`}
-                              style={
-                                !hasSplit && topImage
-                                  ? {
-                                      backgroundImage: `url(${topImage})`,
-                                      backgroundPosition: 'center 12.5%',
-                                    }
-                                  : undefined
-                              }
+                  {showSearch && (
+                    <div className="search-interface">
+                      <div className="search-input-container">
+                        <input
+                          type="text"
+                          className="search-input"
+                          placeholder="Search for cards in your deck..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          className="search-close-btn"
+                          onClick={toggleSearch}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {searchTerm && (
+                        <div className="search-results">
+                          {searchCards(searchTerm).slice(0, 10).map((card, idx) => (
+                            <button
+                              key={`${card.id || card.name}-${idx}`}
+                              type="button"
+                              className="search-result-item"
+                              onClick={() => selectCardFromSearch(card)}
                             >
-                              {hasSplit && (
-                                <div className="card-art-split">
-                                  {images.slice(0, 2).map((url, artIdx) => (
-                                    <div
-                                      key={`${entry.name}-art-${artIdx}`}
-                                      className="card-art"
-                                      style={{
-                                        backgroundImage: `url(${url})`,
-                                      }}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                              <div className="commander-card__content">
-                                <div className="name">{entry.name}</div>
-                              </div>
-                            </Grid>
-                          );
-                        });
-                      })()}
-                    </Grid>
+                              {card.name}
+                            </button>
+                          ))}
+                          {searchCards(searchTerm).length === 0 && (
+                            <div className="search-no-results">No cards found</div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
-                  {deckError && <p className="status error">{deckError}</p>}
-                  {deckStatus && <p className="status">{deckStatus}</p>}
+
+                  {/* Paste Decklist Popup */}
+                  {showPasteDecklist && (
+                    <div className="paste-decklist-overlay" onClick={() => setShowPasteDecklist(false)}>
+                      <div className="paste-decklist-popup" onClick={(e) => e.stopPropagation()}>
+                        <div className="paste-decklist-header">
+                          <h3>Paste Decklist</h3>
+                          <button
+                            type="button"
+                            className="paste-decklist-close-btn"
+                            onClick={() => setShowPasteDecklist(false)}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="paste-decklist-content">
+                          <textarea
+                            className="paste-decklist-textarea"
+                            placeholder="Paste your decklist here. Format should be:
+                            1 Card Name
+                            1 Another Card
+                            ...
+                            SIDEBOARD:
+                            1 Sideboard Card
+                            ...
+                            Commander Name"
+                            value={pasteDecklistText}
+                            onChange={(e) => setPasteDecklistText(e.target.value)}
+                            autoFocus
+                          />
+                          <div className="paste-decklist-instructions">
+                            <p><strong>Format:</strong></p>
+                            <ul>
+                              <li>Mainboard cards: <code>1 Card Name</code> (one per line)</li>
+                              <li>Sideboard: <code>SIDEBOARD:</code> header</li>
+                              <li>Sideboard cards: Listed after SIDEBOARD: (will be ignored)</li>
+                              <li>Commanders: Listed after an empty line following sideboard</li>
+                            </ul>
+                            <p>Example:<br/>
+                                <code>SIDEBOARD:<br/>
+                                    1 Sideboard Card<br/>
+                                    <br/>
+                                    1 Commander Card<br/>
+                                    1 Partner Commander
+                                </code>
+                            </p>
+                          </div>
+                        </div>
+                        <div className="paste-decklist-actions">
+                          <button
+                            type="button"
+                            className="paste-decklist-cancel-btn"
+                            onClick={() => {
+                              setShowPasteDecklist(false);
+                              setPasteDecklistText('');
+                            }}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="paste-decklist-load-btn"
+                            onClick={loadDeckFromPaste}
+                            disabled={!pasteDecklistText.trim() || deckLoading}
+                          >
+                            {deckLoading ? 'Loading...' : 'Load Deck'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {userHand.length > 0 && (
                     <div className="hand-preview">
-                      <p className="note">Opening hand:</p>
                       <Grid container spacing={0} component="ul" className="hand-grid">
+                        <Grid item xs={12}>
+                            <p className="note">Your hand:</p>
+                        </Grid>
                         {userHand.map((card, idx) => {
                           const cached = imageCache[card.name];
                           const images = Array.isArray(cached) ? cached : cached ? [cached] : [];
