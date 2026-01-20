@@ -917,3 +917,27 @@ body {
     transform: translateX(-50%) translateY(0);
   }
 }
+
+/* Author credit footer */
+.author-credit {
+  position: fixed;
+  bottom: 10px;
+  right: 15px;
+  z-index: 100;
+}
+
+.author-credit p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  text-align: right;
+}
+
+.author-credit a {
+  color: rgb(200, 162, 74);
+  text-decoration: none;
+}
+
+.author-credit a:hover {
+  text-decoration: underline;
+}

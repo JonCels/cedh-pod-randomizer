@@ -1877,6 +1877,11 @@ Commander Name`}
           </Grid>
         </section>
       )}
+
+      {/* Author credit */}
+      <footer className="author-credit">
+        <p>Created by <a href="https://github.com/JonCels" target="_blank" rel="noopener noreferrer">[Jonathan Cels]</a></p>
+      </footer>
     </div>
   );
 }
