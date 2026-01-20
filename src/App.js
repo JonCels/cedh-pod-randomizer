@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import Grid from '@mui/material/Grid';
+import ShuffleIcon from '@mui/icons-material/Shuffle';
+import DrawIcon from '@mui/icons-material/Style'; // Using Style as a card icon
+import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import SearchIcon from '@mui/icons-material/Search';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
+import CasinoIcon from '@mui/icons-material/Casino';
 import './App.css';
 import { queryGraphQL, getCommanderEntries } from './api/edhTop16';
 import {
@@ -14,6 +22,7 @@ import {
   loadTopdeckDeckFromUrl,
   extractTopdeckIds,
 } from './domain/topdeckParser';
+import { createLibrary } from './domain/library.js';
 
 function App() {
   const [commanders, setCommanders] = useState([]);
@@ -40,6 +49,7 @@ function App() {
   const [deckError, setDeckError] = useState(null);
   const [deckStatus, setDeckStatus] = useState('');
   const [userLibrary, setUserLibrary] = useState(null);
+  const [originalUserLibrary, setOriginalUserLibrary] = useState(null);
   const [userHand, setUserHand] = useState([]);
   const [userCommanders, setUserCommanders] = useState([]);
   const [deckNameCounts, setDeckNameCounts] = useState({});
@@ -55,6 +65,9 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [showPasteDecklist, setShowPasteDecklist] = useState(false);
   const [pasteDecklistText, setPasteDecklistText] = useState('');
+  const [selectedCardIndex, setSelectedCardIndex] = useState(null);
+  const [handImagesLoading, setHandImagesLoading] = useState(false);
+  const [showGlobalLoading, setShowGlobalLoading] = useState(false);
 
   const getNameParts = (name) => {
     if (!name) return [];
@@ -200,7 +213,17 @@ function App() {
     const fetchHandImages = async () => {
       const names = userHand.map((c) => c?.name).filter(Boolean);
       const toFetch = names.filter((n) => !imageCache[n]);
-      if (!toFetch.length) return;
+      if (!toFetch.length) {
+        setHandImagesLoading(false);
+        setShowGlobalLoading(false);
+        return;
+      }
+
+      // Only show global loading for explicit global loading requests
+      if (showGlobalLoading) {
+        setHandImagesLoading(true);
+      }
+
       const batch = await fetchHandBatchImages(toFetch);
       const results = Object.entries(batch).map(([name, urls]) => ({ name, urls }));
       setImageCache((prev) => {
@@ -210,9 +233,12 @@ function App() {
         });
         return next;
       });
+
+      setHandImagesLoading(false);
+      setShowGlobalLoading(false);
     };
     fetchHandImages();
-  }, [userHand, imageCache]);
+  }, [userHand, imageCache, showGlobalLoading]);
 
   useEffect(() => {
     const fetchOpponentDrawImages = async () => {
@@ -591,8 +617,11 @@ function App() {
     const names = cards.map((c) => c?.name).filter(Boolean);
     const toFetch = names.filter((n) => !imageCache[n]);
     if (!toFetch.length) return;
+
     const batch = await fetchHandBatchImages(toFetch);
     if (!batch || !Object.keys(batch).length) return;
+
+    // Store URLs in cache
     setImageCache((prev) => {
       const next = { ...prev };
       Object.entries(batch).forEach(([name, urls]) => {
@@ -600,6 +629,19 @@ function App() {
       });
       return next;
     });
+
+    // Actually preload the images by creating Image objects
+    const preloadPromises = Object.values(batch).flat().map(url => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(url);
+        img.onerror = () => resolve(url); // Don't fail on individual image errors
+        img.src = url;
+      });
+    });
+
+    // Wait for all images to load (or fail)
+    await Promise.allSettled(preloadPromises);
   };
 
   const getDeckLoader = (source) => {
@@ -737,6 +779,7 @@ function App() {
       const loader = getDeckLoader(source);
       const { library, commanders, name } = await loader(deckUrl);
       setUserLibrary(library);
+      setOriginalUserLibrary(library);
       setUserCommanders(commanders);
       // track counts for duplicate detection during draws
       const nameCounts = library.cards.reduce((map, card) => {
@@ -749,7 +792,7 @@ function App() {
         source === 'archidekt' ? 'Archidekt' : source === 'topdeck' ? 'TopDeck' : 'Moxfield';
       const named = name ? `: ${name}` : '';
       setDeckStatus(
-        `Loaded ${library.cards.length} cards from ${label}${named}. Click Draw 7 to see your hand.`
+        `Loaded ${library.cards.length} cards from ${label}${named}.`
       );
       setUserHand([]);
       await prefetchHandImages(library.cards);
@@ -765,12 +808,14 @@ function App() {
   };
 
   const drawUserHand = () => {
-    if (!userLibrary) return;
+    if (!originalUserLibrary) return;
 
-    // Draw, but if we somehow hit duplicates of a singleton (unexpected), retry a couple times.
+    setShowGlobalLoading(true);
+
+    // Reset to original deck state and draw opening hand
     const maxAttempts = 3;
     for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      const opening = userLibrary.drawOpeningHand(7);
+      const opening = originalUserLibrary.drawOpeningHand(7);
       const handCounts = opening.hand.reduce((map, card) => {
         if (!card?.name) return map;
         map[card.name] = (map[card.name] || 0) + 1;
@@ -783,7 +828,9 @@ function App() {
       if (!hasBadDup) {
         // eslint-disable-next-line no-console
         console.log('Opening hand (names):', opening.hand.map((c) => c?.name || '(unknown)'));
+        setUserLibrary(opening.library);
         setUserHand(opening.hand);
+        setSelectedCardIndex(null);
         return;
       }
       // eslint-disable-next-line no-console
@@ -792,7 +839,9 @@ function App() {
         handCounts,
       });
       if (attempt === maxAttempts - 1) {
-        setUserHand(opening.hand); // fall back to last draw after retries
+        setUserLibrary(opening.library);
+        setUserHand(opening.hand);
+        setSelectedCardIndex(null); // fall back to last draw after retries
       }
     }
   };
@@ -824,6 +873,10 @@ function App() {
         console.log('Drew card:', drawnCard.name);
         setUserLibrary(draw.library);
         setUserHand(prev => [...prev, drawnCard]);
+        // Don't clear selection since we're adding to hand, but adjust index if necessary
+        if (selectedCardIndex !== null && selectedCardIndex >= userHand.length) {
+          setSelectedCardIndex(null);
+        }
         return;
       }
 
@@ -839,6 +892,10 @@ function App() {
         // Fall back to drawing anyway after retries
         setUserLibrary(draw.library);
         setUserHand(prev => [...prev, drawnCard]);
+        // Don't clear selection since we're adding to hand, but adjust index if necessary
+        if (selectedCardIndex !== null && selectedCardIndex >= userHand.length) {
+          setSelectedCardIndex(null);
+        }
       }
     }
   };
@@ -846,6 +903,40 @@ function App() {
   const toggleSearch = () => {
     setShowSearch(prev => !prev);
     setSearchTerm('');
+  };
+
+  const sendToBottom = () => {
+    if (!userLibrary || selectedCardIndex === null) return;
+
+    const selectedCard = userHand[selectedCardIndex];
+    if (!selectedCard) return;
+
+    // Remove the selected card from hand
+    const newHand = userHand.filter((_, idx) => idx !== selectedCardIndex);
+
+    // Add the card to the bottom of the library
+    const newLibraryCards = [...userLibrary.cards, selectedCard];
+    const updatedLibrary = createLibrary({
+      name: userLibrary.name,
+      commanderId: userLibrary.commanderId,
+      cards: newLibraryCards
+    });
+
+    setUserLibrary(updatedLibrary);
+    setUserHand(newHand);
+    setSelectedCardIndex(null);
+
+    console.log('Sent card to bottom of library:', selectedCard.name);
+  };
+
+  const shuffleLibrary = () => {
+    if (!userLibrary) return;
+
+    const shuffled = userLibrary.shuffled();
+    setUserLibrary(shuffled);
+
+    alert('Shuffled!');
+    console.log('Shuffled library');
   };
 
   const searchCards = (term) => {
@@ -862,14 +953,16 @@ function App() {
 
     // Remove the selected card from the library
     const remainingCards = userLibrary.cards.filter(c => c.id !== card.id);
-    const updatedLibrary = {
-      ...userLibrary,
+    const updatedLibrary = createLibrary({
+      name: userLibrary.name,
+      commanderId: userLibrary.commanderId,
       cards: remainingCards
-    };
+    });
 
     // Add the card to the hand
     setUserLibrary(updatedLibrary);
     setUserHand(prev => [...prev, card]);
+    setSelectedCardIndex(null);
     setShowSearch(false);
     setSearchTerm('');
 
@@ -881,45 +974,69 @@ function App() {
 
     const mainboardCards = [];
     const commanders = [];
-    let inSideboard = false;
-    let foundEmptyLineAfterSideboard = false;
 
-    for (const line of lines) {
-      // Skip empty lines
-      if (!line) {
-        if (inSideboard) {
-          foundEmptyLineAfterSideboard = true;
+    // Find the sideboard section (case insensitive)
+    let sideboardIndex = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].toLowerCase().includes('sideboard')) {
+        sideboardIndex = i;
+        break;
+      }
+    }
+
+    // Find the separator empty line
+    let separatorIndex = -1;
+    if (sideboardIndex !== -1) {
+      // If sideboard exists, find the empty line after it
+      for (let i = sideboardIndex + 1; i < lines.length; i++) {
+        if (!lines[i]) {
+          separatorIndex = i;
+          break;
         }
-        continue;
       }
-
-      if (line.toUpperCase() === 'SIDEBOARD:') {
-        inSideboard = true;
-        continue;
+    } else {
+      // If no sideboard, find the first empty line
+      for (let i = 0; i < lines.length; i++) {
+        if (!lines[i]) {
+          separatorIndex = i;
+          break;
+        }
       }
+    }
 
-      // Skip lines that don't start with a number
-      if (!line.match(/^\d+/)) continue;
+    // Process mainboard cards (before sideboard or before separator)
+    const mainboardEndIndex = sideboardIndex !== -1 ? sideboardIndex : separatorIndex;
+    for (let i = 0; i < mainboardEndIndex; i++) {
+      const line = lines[i];
+      if (!line || !line.match(/^\d+/)) continue;
 
-      // Extract card name (everything after the first space)
       const cardName = line.replace(/^\d+\s+/, '');
+      const count = parseInt(line.match(/^\d+/)[0], 10);
 
-      if (!inSideboard) {
-        // Mainboard cards - create multiple copies based on the count
-        const count = parseInt(line.match(/^\d+/)[0], 10);
-        for (let i = 0; i < count; i++) {
-          mainboardCards.push({
-            name: cardName,
-            id: `${cardName}-${i}-${Date.now()}`, // Unique ID for each copy
-          });
+      for (let j = 0; j < count; j++) {
+        mainboardCards.push({
+          name: cardName,
+          id: `${cardName}-${j}-${Date.now()}`, // Unique ID for each copy
+        });
+      }
+    }
+
+    // Process commanders (after separator)
+    if (separatorIndex !== -1) {
+      for (let i = separatorIndex + 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line) continue;
+
+        // Commanders can be listed with or without quantities
+        let cardName = line;
+        if (line.match(/^\d+/)) {
+          cardName = line.replace(/^\d+\s+/, '');
         }
-      } else if (inSideboard && foundEmptyLineAfterSideboard) {
-        // After sideboard and after an empty line, these are commanders (1 copy each)
+
         commanders.push({
           name: cardName,
         });
       }
-      // If in sideboard but haven't found empty line yet, ignore (sideboard cards)
     }
 
     return { mainboardCards, commanders };
@@ -947,6 +1064,7 @@ function App() {
       });
 
       setUserLibrary(library);
+      setOriginalUserLibrary(library);
       setUserCommanders(commanders);
 
       // Track counts for duplicate detection during draws
@@ -958,7 +1076,7 @@ function App() {
       setDeckNameCounts(nameCounts);
 
       setDeckStatus(
-        `Loaded ${library.cards.length} cards from pasted decklist. Click Draw 7 to see your hand.`
+        `Loaded ${library.cards.length} cards from pasted decklist.`
       );
       setUserHand([]);
       setShowPasteDecklist(false);
@@ -1039,7 +1157,7 @@ function App() {
                   </p>
                   
                   <Grid container spacing={1.5} alignItems="center" className="deck-url-row">
-                    <Grid item xs={12} sm={6.5}>
+                    <Grid item xs={12} sm={6}>
                       <input
                         id="deckUrl"
                         type="url"
@@ -1050,7 +1168,7 @@ function App() {
                       />
                     </Grid>
 
-                    <Grid item xs={6} sm={2.75}>
+                    <Grid item xs={6} sm={3}>
                         <div className="deck-actions inline load-actions">
                         <button
                             type="button"
@@ -1058,18 +1176,20 @@ function App() {
                             onClick={loadDeckFromUrl}
                             disabled={deckLoading || !deckUrl}
                         >
+                            <FileUploadIcon sx={{ mr: 0.75, fontSize: '1rem', verticalAlign: 'middle' }} />
                             {deckLoading ? 'Loading...' : 'Load Decklist'}
                         </button>
                         </div>
                     </Grid>
 
-                    <Grid item xs={6} sm={2.75}>
+                    <Grid item xs={6} sm={3}>
                         <div className="deck-actions inline load-actions">
                         <button
                             type="button"
                             onClick={() => setShowPasteDecklist(true)}
                             disabled={deckLoading}
                         >
+                            <ContentPasteIcon sx={{ mr: 0.75, fontSize: '1rem', verticalAlign: 'middle' }} />
                             Paste Decklist
                         </button>
                         </div>
@@ -1139,28 +1259,59 @@ function App() {
                         <p className="status error">{deckError}</p>
                     </Grid>
                     }
-                    {deckStatus && <Grid item xs={12}>
+                    {deckStatus &&
+                    <Grid item xs={12}>
                         <p className="status">{deckStatus}</p>
                     </Grid>
                     }
 
-                    {/* Deck controls - only shown after deck is loaded */}
-                    {userLibrary && (
+                    {/* Draw 7/Mulligan button - only shown after deck is loaded */}
+                    {userLibrary && !userHand.length && (
                       <Grid item xs={12}>
                         <Grid container spacing={1}>
-                          <Grid item xs={12} sm={4}>
+                          <Grid item xs={6} sm={3}>
                             <div className="deck-actions">
                               <button
                                 type="button"
                                 onClick={drawUserHand}
                                 disabled={!userLibrary}
-                                className="full-width-btn"
+                                className="full-width-btn primary"
                               >
-                                {userHand.length ? 'Mulligan' : 'Draw 7'}
+                                <RefreshIcon sx={{ mr: 0.75, fontSize: '1rem', verticalAlign: 'middle' }} />
+                                Draw 7
                               </button>
                             </div>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+                          <Grid item xs={6} sm={9}>
+                            {/* Empty space */}
+                          </Grid>
+                        </Grid>
+                      </Grid>
+                    )}
+
+                    {/* Additional deck controls - only shown after drawing opening hand */}
+                    {userLibrary && userHand.length > 0 && (
+                      <Grid item xs={12}>
+                        <Grid container spacing={1}>
+                          <Grid item xs={6} sm={3}>
+                            <div className="deck-actions">
+                              <button
+                                type="button"
+                                onClick={drawUserHand}
+                                disabled={!userLibrary}
+                                className="full-width-btn primary"
+                              >
+                                <RefreshIcon sx={{ mr: 0.75, fontSize: '1rem', verticalAlign: 'middle', transform: 'scaleX(-1)' }} />
+                                Mulligan
+                              </button>
+                            </div>
+                          </Grid>
+                          <Grid item xs={6} sm={9}>
+                            {/* Empty space */}
+                          </Grid>
+
+                          {/* Second row: Other buttons */}
+                          <Grid item xs={6} sm={3}>
                             <div className="deck-actions">
                               <button
                                 type="button"
@@ -1168,11 +1319,42 @@ function App() {
                                 onClick={drawSingleCard}
                                 className="full-width-btn"
                               >
-                                Draw
+                                <DrawIcon sx={{ mr: 0.5, fontSize: '1rem', verticalAlign: 'middle' }} />
+                                Draw Card
                               </button>
                             </div>
                           </Grid>
-                          <Grid item xs={12} sm={4}>
+
+                          <Grid item xs={6} sm={3}>
+                            <div className="deck-actions">
+                              <button
+                                type="button"
+                                disabled={!userLibrary}
+                                onClick={shuffleLibrary}
+                                className="full-width-btn"
+                              >
+                                <ShuffleIcon sx={{ mr: 0.5, fontSize: '1rem', verticalAlign: 'middle' }} />
+                                Shuffle Library
+                              </button>
+                            </div>
+                          </Grid>
+
+                          <Grid item xs={6} sm={3}>
+                            <div className="deck-actions">
+                              <button
+                                type="button"
+                                disabled={!userLibrary || selectedCardIndex === null}
+                                onClick={sendToBottom}
+                                className="full-width-btn"
+                                title="Please select a card"
+                              >
+                                <ArrowDownwardIcon sx={{ mr: 0.5, fontSize: '1rem', verticalAlign: 'middle' }} />
+                                Send to Bottom
+                              </button>
+                            </div>
+                          </Grid>
+
+                          <Grid item xs={6} sm={3}>
                             <div className="deck-actions">
                               <button
                                 type="button"
@@ -1180,13 +1362,15 @@ function App() {
                                 onClick={toggleSearch}
                                 className="full-width-btn"
                               >
-                                Search...
+                                <SearchIcon sx={{ mr: 0.5, fontSize: '1rem', verticalAlign: 'middle' }} />
+                                Search Library
                               </button>
                             </div>
                           </Grid>
                         </Grid>
                       </Grid>
                     )}
+
                   </Grid>
 
                   {showSearch && (
@@ -1245,14 +1429,14 @@ function App() {
                         <div className="paste-decklist-content">
                           <textarea
                             className="paste-decklist-textarea"
-                            placeholder="Paste your decklist here. Format should be:
-                            1 Card Name
-                            1 Another Card
-                            ...
-                            SIDEBOARD:
-                            1 Sideboard Card
-                            ...
-                            Commander Name"
+                            placeholder={`Paste your decklist here. Format should be:
+1 Card Name
+1 Another Card
+...
+SIDEBOARD:
+1 Sideboard Card
+...
+Commander Name`}
                             value={pasteDecklistText}
                             onChange={(e) => setPasteDecklistText(e.target.value)}
                             autoFocus
@@ -1261,18 +1445,30 @@ function App() {
                             <p><strong>Format:</strong></p>
                             <ul>
                               <li>Mainboard cards: <code>1 Card Name</code> (one per line)</li>
-                              <li>Sideboard: <code>SIDEBOARD:</code> header</li>
-                              <li>Sideboard cards: Listed after SIDEBOARD: (will be ignored)</li>
-                              <li>Commanders: Listed after an empty line following sideboard</li>
+                              <li>Sideboard: Any line containing "sideboard" (case insensitive) - everything after until empty line is ignored</li>
+                              <li>Commanders: Listed after an empty line (after sideboard if present, or after mainboard if no sideboard)</li>
                             </ul>
-                            <p>Example:<br/>
-                                <code>SIDEBOARD:<br/>
-                                    1 Sideboard Card<br/>
-                                    <br/>
-                                    1 Commander Card<br/>
-                                    1 Partner Commander
-                                </code>
-                            </p>
+                            <p><strong>Example with sideboard:</strong></p>
+                            <pre><code>{[
+                              '1 Mainboard Card',
+                              '1 Another Mainboard Card',
+                              '',
+                              'SIDEBOARD:',
+                              '1 Sideboard Card',
+                              '1 Another Sideboard Card',
+                              '',
+                              '1 Commander Card',
+                              '1 Partner Commander'
+                            ].join('\n')}</code></pre>
+
+                            <p><strong>Example without sideboard:</strong></p>
+                            <pre><code>{[
+                              '1 Mainboard Card',
+                              '1 Another Mainboard Card',
+                              '',
+                              'Commander Card',
+                              'Partner Commander'
+                            ].join('\n')}</code></pre>
                           </div>
                         </div>
                         <div className="paste-decklist-actions">
@@ -1305,35 +1501,50 @@ function App() {
                         <Grid item xs={12}>
                             <p className="note">Your hand:</p>
                         </Grid>
-                        {userHand.map((card, idx) => {
-                          const cached = imageCache[card.name];
-                          const images = Array.isArray(cached) ? cached : cached ? [cached] : [];
-                          const topImage = images[0];
-                          // split 4 on top row, 3 on bottom; use xs=6 to force 2 cols on mobile, md for desktop layout
-                          return (
-                            <Grid
-                              item
-                              xs="auto"
-                              sm="auto"
-                              md="auto"
-                              lg="auto"
-                              component="li"
-                              key={card.id || `${card.name}-${idx}`}
-                              className="hand-card"
-                            >
-                              {topImage ? (
-                                <img
-                                  className="hand-card__img"
-                                  src={topImage}
-                                  alt={card.name}
-                                  loading="lazy"
-                                />
-                              ) : (
-                                <div className="hand-card__placeholder">{card.name}</div>
-                              )}
-                            </Grid>
-                          );
-                        })}
+                        {showGlobalLoading ? (
+                          <Grid item xs={12}>
+                            <div className="hand-loading">
+                              <div className="loading-spinner"></div>
+                              <p>Loading card images...</p>
+                            </div>
+                          </Grid>
+                        ) : (
+                          userHand.map((card, idx) => {
+                            const cached = imageCache[card.name];
+                            const images = Array.isArray(cached) ? cached : cached ? [cached] : [];
+                            const topImage = images[0];
+                            const isSelected = selectedCardIndex === idx;
+                            // split 4 on top row, 3 on bottom; use xs=6 to force 2 cols on mobile, md for desktop layout
+                            return (
+                              <Grid
+                                item
+                                xs="auto"
+                                sm="auto"
+                                md="auto"
+                                lg="auto"
+                                component="li"
+                                key={card.id || `${card.name}-${idx}`}
+                                className={`hand-card ${isSelected ? 'selected' : ''}`}
+                                onClick={() => setSelectedCardIndex(isSelected ? null : idx)}
+                                style={{ cursor: 'pointer' }}
+                              >
+                                {topImage ? (
+                                  <img
+                                    className="hand-card__img"
+                                    src={topImage}
+                                    alt={card.name}
+                                    loading="lazy"
+                                  />
+                                ) : (
+                                  <div className="hand-card__placeholder">{card.name}</div>
+                                )}
+                                {isSelected && (
+                                  <div className="card-selection-indicator">Selected</div>
+                                )}
+                              </Grid>
+                            );
+                          })
+                        )}
                       </Grid>
                     </div>
                   )}
@@ -1354,6 +1565,7 @@ function App() {
                       onClick={() => rollSelection()}
                       disabled={!commanders.length}
                     >
+                      <CasinoIcon sx={{ mr: 0.5, fontSize: '1rem', verticalAlign: 'middle' }} />
                       Randomize Pod
                     </button>
                     <p className="note">Click to reroll anytime.</p>
