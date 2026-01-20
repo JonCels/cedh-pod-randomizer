@@ -68,6 +68,8 @@ function App() {
   const [selectedCardIndex, setSelectedCardIndex] = useState(null);
   const [handImagesLoading, setHandImagesLoading] = useState(false);
   const [showGlobalLoading, setShowGlobalLoading] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState('');
 
   const getNameParts = (name) => {
     if (!name) return [];
@@ -935,7 +937,10 @@ function App() {
     const shuffled = userLibrary.shuffled();
     setUserLibrary(shuffled);
 
-    alert('Shuffled!');
+    setNotificationMessage('Shuffled!');
+    setShowNotification(true);
+    setTimeout(() => setShowNotification(false), 2000);
+
     console.log('Shuffled library');
   };
 
@@ -1096,6 +1101,11 @@ function App() {
 
   return (
     <div className="App">
+      {showNotification && (
+        <div className="notification">
+          {notificationMessage}
+        </div>
+      )}
       <header className="pod-selection">
         <div className="brand-logos brand-top-left">
           <img
@@ -1146,7 +1156,7 @@ function App() {
                   <div className="card-header">
                     <h2>Your Deck</h2>
                       <small>
-                        Load a Moxfield, Archidekt, or TopDeck deck link 
+                        Load a Moxfield, Archidekt, or TopDeck deck 
                         <br/>
                         or paste a decklist directly
                       </small>
