@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import Grid from '@mui/material/Grid';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import DrawIcon from '@mui/icons-material/Style'; // Using Style as a card icon
@@ -1101,6 +1102,7 @@ function App() {
 
   return (
     <div className="App">
+      <Analytics />
       {showNotification && (
         <div className="notification">
           {notificationMessage}
