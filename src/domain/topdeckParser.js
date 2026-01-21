@@ -3,6 +3,7 @@ import { createLibrary } from './library.js';
 import { resolveProxyBase } from '../api/proxyBase.js';
 
 /**
+ * Comment
  * Extract TopDeck tournament + player ids from a deck URL.
  * Expected format: https://topdeck.gg/deck/{tournamentId}/{playerId}
  */
