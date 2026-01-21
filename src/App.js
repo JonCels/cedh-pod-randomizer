@@ -173,7 +173,9 @@ function App() {
 
       const results = await Promise.all(
         Array.from(namesToFetch).map(async (name) => {
-          const urls = await fetchImageUrls(name);
+          // Find the card object to get art info
+          const card = selection.find(c => c.name === name);
+          const urls = await fetchImageUrls(name, card);
           return { name, urls };
         })
       );

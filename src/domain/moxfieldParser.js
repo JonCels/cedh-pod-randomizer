@@ -90,6 +90,33 @@ const boardToLines = (board = {}) => {
   return lines;
 };
 
+const boardToCards = (board = {}) => {
+  const cards = [];
+  Object.values(board || {}).forEach((entry) => {
+    if (!entry) return;
+    const qty = entry.quantity ?? entry.count ?? entry.qty ?? 1;
+    const name = entry.card?.name || entry.name;
+    if (!name) return;
+
+    // Extract art information from Moxfield's card object
+    const cardData = entry.card || {};
+    const scryfallId = cardData.id || cardData.scryfall_id || '';
+    const illustrationId = cardData.illustration_id || '';
+    const customImageUrl = cardData.image_url || cardData.art_crop_url || '';
+
+    for (let i = 0; i < qty; i += 1) {
+      cards.push(createCard({
+        id: `${name}-${scryfallId || 'default'}-${i}`,
+        name,
+        scryfallId,
+        illustrationId,
+        customImageUrl,
+      }));
+    }
+  });
+  return cards;
+};
+
 /**
  * Convert the Moxfield deck API response into the plain-text format our parser expects.
  * @param {object} data raw response from /v2/decks/all/{id}
@@ -102,6 +129,27 @@ export const buildPlainTextFromApiDeck = (data = {}) => {
   lines.push('');
   lines.push(...boardToLines(data.commanders));
   return lines.join('\n');
+};
+
+/**
+ * Parse Moxfield deck API response directly into structured card data.
+ * @param {object} data raw response from /v2/decks/all/{id}
+ */
+export const parseMoxfieldApiDeck = (data = {}) => {
+  const library = [];
+  const commanders = [];
+
+  // Parse mainboard (excluding sideboard and commanders)
+  if (data.mainboard) {
+    library.push(...boardToCards(data.mainboard));
+  }
+
+  // Parse commanders separately
+  if (data.commanders) {
+    commanders.push(...boardToCards(data.commanders));
+  }
+
+  return { library, commanders };
 };
 
 /**
@@ -139,8 +187,7 @@ export async function loadMoxfieldDeckFromUrl(
     );
   }
   const data = await res.json();
-  const plain = buildPlainTextFromApiDeck(data);
-  const parsed = parseMoxfieldPlainText(plain);
+  const parsed = parseMoxfieldApiDeck(data);
   const library = createLibrary({
     name: data?.name || 'Moxfield Deck',
     commanderId: parsed.commanders[0]?.name || null,

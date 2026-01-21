@@ -38,6 +38,15 @@ export const parseArchidektDeckData = (data = {}) => {
     entry?.card?.uidName ||
     '';
 
+  const extractArtInfo = (entry = {}) => {
+    const card = entry?.card || {};
+    return {
+      scryfallId: card.id || card.scryfall_id || '',
+      illustrationId: card.illustration_id || card.oracleCard?.illustration_id || '',
+      customImageUrl: card.image_url || card.art_crop_url || '',
+    };
+  };
+
   cards.forEach((entry, idx) => {
     if (!entry) return;
     const categories = (entry.categories || []).map((c) => `${c}`.toLowerCase());
@@ -59,12 +68,16 @@ export const parseArchidektDeckData = (data = {}) => {
       Array.isArray(entry.categories) &&
       entry.categories.some((c) => (c || '').toLowerCase().includes('commander'));
 
+    const artInfo = extractArtInfo(entry);
     const target = isCommander ? commanders : library;
     for (let i = 0; i < qty; i += 1) {
       target.push(
         createCard({
-          id: `${name}-${idx}-${i}`,
+          id: `${name}-${artInfo.scryfallId || idx}-${i}`,
           name,
+          scryfallId: artInfo.scryfallId,
+          illustrationId: artInfo.illustrationId,
+          customImageUrl: artInfo.customImageUrl,
         })
       );
     }
