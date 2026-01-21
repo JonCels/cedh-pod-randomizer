@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/edhapi/graphql",
+      "destination": "/api/graphql"
+    },
+    {
       "source": "/api/moxapi/(.*)",
       "destination": "/api/moxproxy?path=$1"
     },
