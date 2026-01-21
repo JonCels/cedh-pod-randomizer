@@ -36,12 +36,27 @@ export const extractTopdeckIds = (url = '') => {
 
 const normalizeSectionName = (section = '') => `${section}`.trim().toLowerCase();
 
-const addCards = (target, name, count = 1, seed = '') => {
+const addCards = (target, name, count = 1, seed = '', artInfo = {}) => {
   const qty = Number.parseInt(count, 10) || 0;
   if (!name || qty <= 0) return;
   for (let i = 0; i < qty; i += 1) {
-    target.push(createCard({ id: `${name}-${seed}-${i}`, name }));
+    target.push(createCard({
+      id: `${name}-${artInfo.scryfallId || seed}-${i}`,
+      name,
+      scryfallId: artInfo.scryfallId || '',
+      illustrationId: artInfo.illustrationId || '',
+      customImageUrl: artInfo.customImageUrl || '',
+    }));
   }
+};
+
+const extractTopdeckArtInfo = (entry = {}) => {
+  // Topdeck may preserve Moxfield/Archidekt art info in various formats
+  return {
+    scryfallId: entry.scryfall_id || entry.id || entry.cardId || '',
+    illustrationId: entry.illustration_id || entry.artId || '',
+    customImageUrl: entry.image_url || entry.art_url || entry.card?.image_url || '',
+  };
 };
 
 /**
@@ -80,7 +95,8 @@ export const parseTopdeckDeckObj = (deckObj = {}) => {
       entries.forEach((entry, idx) => {
         const name = entry?.name || entry?.card?.name || entry?.cardName;
         const count = entry?.count ?? entry?.quantity ?? entry?.qty ?? 1;
-        addCards(target, name, count, `${sectionName}-${idx}`);
+        const artInfo = extractTopdeckArtInfo(entry);
+        addCards(target, name, count, `${sectionName}-${idx}`, artInfo);
       });
       return;
     }
@@ -88,7 +104,8 @@ export const parseTopdeckDeckObj = (deckObj = {}) => {
     if (entries && typeof entries === 'object') {
       Object.entries(entries).forEach(([name, entry], idx) => {
         const count = entry?.count ?? entry?.quantity ?? entry?.qty ?? 1;
-        addCards(target, name, count, `${sectionName}-${idx}`);
+        const artInfo = extractTopdeckArtInfo(entry);
+        addCards(target, name, count, `${sectionName}-${idx}`, artInfo);
       });
     }
   });

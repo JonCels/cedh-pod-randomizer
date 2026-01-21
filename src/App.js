@@ -173,7 +173,9 @@ function App() {
 
       const results = await Promise.all(
         Array.from(namesToFetch).map(async (name) => {
-          const urls = await fetchImageUrls(name);
+          // Find the card object to get art info
+          const card = selection.find(c => c.name === name);
+          const urls = await fetchImageUrls(name, card);
           return { name, urls };
         })
       );
@@ -197,7 +199,9 @@ function App() {
       if (!namesToFetch.length) return;
       const results = await Promise.all(
         namesToFetch.map(async (name) => {
-          const urls = await fetchImageUrls(name);
+          // Find the card object to get art info
+          const card = userCommanders.find(c => c.name === name);
+          const urls = await fetchImageUrls(name, card);
           return { name, urls };
         })
       );
@@ -214,9 +218,8 @@ function App() {
 
   useEffect(() => {
     const fetchHandImages = async () => {
-      const names = userHand.map((c) => c?.name).filter(Boolean);
-      const toFetch = names.filter((n) => !imageCache[n]);
-      if (!toFetch.length) {
+      const cards = userHand.filter((c) => c?.name && !imageCache[c.name]);
+      if (!cards.length) {
         setHandImagesLoading(false);
         setShowGlobalLoading(false);
         return;
@@ -227,7 +230,7 @@ function App() {
         setHandImagesLoading(true);
       }
 
-      const batch = await fetchHandBatchImages(toFetch);
+      const batch = await fetchHandBatchImages(cards);
       const results = Object.entries(batch).map(([name, urls]) => ({ name, urls }));
       setImageCache((prev) => {
         const next = { ...prev };
@@ -245,12 +248,10 @@ function App() {
 
   useEffect(() => {
     const fetchOpponentDrawImages = async () => {
-      const names = Object.values(opponentDraws)
-        .map((c) => c?.name)
-        .filter(Boolean);
-      const toFetch = names.filter((n) => !imageCache[n]);
-      if (!toFetch.length) return;
-      const batch = await fetchHandBatchImages(toFetch);
+      const cards = Object.values(opponentDraws)
+        .filter((c) => c?.name && !imageCache[c.name]);
+      if (!cards.length) return;
+      const batch = await fetchHandBatchImages(cards);
       const results = Object.entries(batch).map(([name, urls]) => ({ name, urls }));
       setImageCache((prev) => {
         const next = { ...prev };
@@ -494,17 +495,57 @@ function App() {
     return stops.join(', ') || 'radial-gradient(circle at 20% 20%, rgba(180, 190, 200, 0.15), transparent 45%)';
   };
 
-  const fetchImageUrls = async (name) => {
+  const fetchImageUrls = async (name, card = null) => {
     if (!name) return [];
+
+    // Check if we have preserved art information from the deck source
+    if (card?.customImageUrl) {
+      return [card.customImageUrl];
+    }
+
+    // If we have a specific Scryfall ID, use it for exact printing
+    if (card?.scryfallId) {
+      try {
+        const res = await fetch(`https://api.scryfall.com/cards/${card.scryfallId}`);
+        if (res.ok) {
+          const cardData = await res.json();
+          const faceImages =
+            (cardData?.card_faces || [])
+              .map(
+                (face) =>
+                  face?.image_uris?.art_crop ||
+                  face?.image_uris?.normal ||
+                  face?.image_uris?.large ||
+                  null
+              )
+              .filter(Boolean) || [];
+          const primaryImage =
+            cardData?.image_uris?.art_crop ||
+            cardData?.image_uris?.normal ||
+            cardData?.image_uris?.large ||
+            null;
+
+          const isDf = isDoubleFaced(name);
+          if (isDf && faceImages.length) return faceImages.slice(0, 2);
+          if (faceImages.length) return [faceImages[0]];
+          if (primaryImage) return [primaryImage];
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Scryfall specific ID fetch failed for', name, card.scryfallId, e);
+      }
+    }
+
+    // Fallback to fuzzy search
     const isDf = isDoubleFaced(name);
     const queryName = (isDf ? name.split('//')[0] : name.split('/')[0]).trim();
     const query = encodeURIComponent(queryName);
     try {
       const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${query}`);
       if (!res.ok) return [];
-      const card = await res.json();
+      const cardData = await res.json();
       const faceImages =
-        (card?.card_faces || [])
+        (cardData?.card_faces || [])
           .map(
             (face) =>
               face?.image_uris?.art_crop ||
@@ -514,9 +555,9 @@ function App() {
           )
           .filter(Boolean) || [];
       const primaryImage =
-        card?.image_uris?.art_crop ||
-        card?.image_uris?.normal ||
-        card?.image_uris?.large ||
+        cardData?.image_uris?.art_crop ||
+        cardData?.image_uris?.normal ||
+        cardData?.image_uris?.large ||
         null;
 
       if (isDf && faceImages.length) return faceImages.slice(0, 2);
@@ -530,16 +571,56 @@ function App() {
     }
   };
 
-  const fetchHandImageUrls = async (name) => {
+  const fetchHandImageUrls = async (name, card = null) => {
     if (!name) return [];
+
+    // Check if we have preserved art information from the deck source
+    if (card?.customImageUrl) {
+      return [card.customImageUrl];
+    }
+
+    // If we have a specific Scryfall ID, use it for exact printing
+    if (card?.scryfallId) {
+      try {
+        const res = await fetch(`https://api.scryfall.com/cards/${card.scryfallId}`);
+        if (res.ok) {
+          const cardData = await res.json();
+          const faceImages =
+            (cardData?.card_faces || [])
+              .map(
+                (face) =>
+                  face?.image_uris?.small ||
+                  face?.image_uris?.normal ||
+                  face?.image_uris?.large ||
+                  face?.image_uris?.art_crop ||
+                  null
+              )
+              .filter(Boolean) || [];
+          const primaryImage =
+            cardData?.image_uris?.small ||
+            cardData?.image_uris?.normal ||
+            cardData?.image_uris?.large ||
+            cardData?.image_uris?.art_crop ||
+            null;
+
+          if (faceImages.length) return [faceImages[0]];
+          if (primaryImage) return [primaryImage];
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Scryfall specific ID hand fetch failed for', name, card.scryfallId, e);
+      }
+    }
+
+    // Fallback to fuzzy search
     const queryName = (isDoubleFaced(name) ? name.split('//')[0] : name.split('/')[0]).trim();
     const query = encodeURIComponent(queryName);
     try {
       const res = await fetch(`https://api.scryfall.com/cards/named?fuzzy=${query}`);
       if (!res.ok) return [];
-      const card = await res.json();
+      const cardData = await res.json();
       const faceImages =
-        (card?.card_faces || [])
+        (cardData?.card_faces || [])
           .map(
             (face) =>
               face?.image_uris?.small ||
@@ -550,10 +631,10 @@ function App() {
           )
           .filter(Boolean) || [];
       const primaryImage =
-        card?.image_uris?.small ||
-        card?.image_uris?.normal ||
-        card?.image_uris?.large ||
-        card?.image_uris?.art_crop ||
+        cardData?.image_uris?.small ||
+        cardData?.image_uris?.normal ||
+        cardData?.image_uris?.large ||
+        cardData?.image_uris?.art_crop ||
         null;
 
       if (faceImages.length) return [faceImages[0]];
@@ -566,59 +647,122 @@ function App() {
     }
   };
 
-  const fetchHandBatchImages = async (names = []) => {
-    const unique = Array.from(new Set(names.filter(Boolean)));
+  const fetchHandBatchImages = async (cards = []) => {
+    const unique = Array.from(new Set(cards.filter(Boolean)));
     if (!unique.length) return {};
-    const queries = unique.map((n) => ({
-      key: n,
-      query: (isDoubleFaced(n) ? n.split('//')[0] : n.split('/')[0]).trim(),
-    }));
-    try {
-      const body = {
-        identifiers: queries.map((q) => ({ name: q.query })),
-      };
-      const res = await fetch('https://api.scryfall.com/cards/collection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) return {};
-      const data = await res.json();
-      const map = {};
-      (data?.data || []).forEach((card, idx) => {
-        const name = queries[idx]?.key || card?.name;
-        if (!name) return;
-        const faceImages =
-          (card?.card_faces || [])
-            .map(
-              (face) =>
-                face?.image_uris?.small ||
-                face?.image_uris?.normal ||
-                face?.image_uris?.large ||
-                face?.image_uris?.art_crop ||
-                null
-            )
-            .filter(Boolean) || [];
-        const primaryImage =
-          card?.image_uris?.small ||
-          card?.image_uris?.normal ||
-          card?.image_uris?.large ||
-          card?.image_uris?.art_crop ||
-          null;
-        const urls = faceImages.length ? [faceImages[0]] : primaryImage ? [primaryImage] : [];
-        if (urls.length) map[name] = urls;
-      });
-      return map;
-    } catch (e) {
-      // eslint-disable-next-line no-console
-      console.warn('Scryfall batch hand fetch failed', e);
-      return {};
+
+    // Separate cards with preserved art info from those needing Scryfall lookup
+    const preservedArtCards = unique.filter(card => card.customImageUrl);
+    const needsLookupCards = unique.filter(card => !card.customImageUrl);
+
+    const map = {};
+
+    // Handle cards with preserved art directly
+    preservedArtCards.forEach(card => {
+      if (card.name && card.customImageUrl) {
+        map[card.name] = [card.customImageUrl];
+      }
+    });
+
+    // Handle cards needing Scryfall lookup
+    if (needsLookupCards.length > 0) {
+      const queries = needsLookupCards.map((card) => ({
+        key: card.name,
+        query: (isDoubleFaced(card.name) ? card.name.split('//')[0] : card.name.split('/')[0]).trim(),
+        scryfallId: card.scryfallId,
+      }));
+
+      // First try exact Scryfall IDs for cards that have them
+      const exactIdCards = queries.filter(q => q.scryfallId);
+      if (exactIdCards.length > 0) {
+        const exactPromises = exactIdCards.map(async (query) => {
+          try {
+            const res = await fetch(`https://api.scryfall.com/cards/${query.scryfallId}`);
+            if (res.ok) {
+              const cardData = await res.json();
+              const faceImages =
+                (cardData?.card_faces || [])
+                  .map(
+                    (face) =>
+                      face?.image_uris?.small ||
+                      face?.image_uris?.normal ||
+                      face?.image_uris?.large ||
+                      face?.image_uris?.art_crop ||
+                      null
+                  )
+                  .filter(Boolean) || [];
+              const primaryImage =
+                cardData?.image_uris?.small ||
+                cardData?.image_uris?.normal ||
+                cardData?.image_uris?.large ||
+                cardData?.image_uris?.art_crop ||
+                null;
+              const urls = faceImages.length ? [faceImages[0]] : primaryImage ? [primaryImage] : [];
+              return { name: query.key, urls };
+            }
+          } catch (e) {
+            // eslint-disable-next-line no-console
+            console.warn('Scryfall exact ID fetch failed for', query.key, query.scryfallId, e);
+          }
+          return { name: query.key, urls: [] };
+        });
+
+        const exactResults = await Promise.all(exactPromises);
+        exactResults.forEach(({ name, urls }) => {
+          if (urls.length) map[name] = urls;
+        });
+      }
+
+      // For remaining cards without exact IDs, do batch fuzzy search
+      const fuzzyQueries = queries.filter(q => !q.scryfallId && !map[q.key]);
+      if (fuzzyQueries.length > 0) {
+        try {
+          const body = {
+            identifiers: fuzzyQueries.map((q) => ({ name: q.query })),
+          };
+          const res = await fetch('https://api.scryfall.com/cards/collection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            (data?.data || []).forEach((card, idx) => {
+              const name = fuzzyQueries[idx]?.key || card?.name;
+              if (!name) return;
+              const faceImages =
+                (card?.card_faces || [])
+                  .map(
+                    (face) =>
+                      face?.image_uris?.small ||
+                      face?.image_uris?.normal ||
+                      face?.image_uris?.large ||
+                      face?.image_uris?.art_crop ||
+                      null
+                  )
+                  .filter(Boolean) || [];
+              const primaryImage =
+                card?.image_uris?.small ||
+                card?.image_uris?.normal ||
+                card?.image_uris?.large ||
+                card?.image_uris?.art_crop ||
+                null;
+              const urls = faceImages.length ? [faceImages[0]] : primaryImage ? [primaryImage] : [];
+              if (urls.length) map[name] = urls;
+            });
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn('Scryfall batch fuzzy fetch failed', e);
+        }
+      }
     }
+
+    return map;
   };
 
   const prefetchHandImages = async (cards = []) => {
-    const names = cards.map((c) => c?.name).filter(Boolean);
-    const toFetch = names.filter((n) => !imageCache[n]);
+    const toFetch = cards.filter((c) => c?.name && !imageCache[c.name]);
     if (!toFetch.length) return;
 
     const batch = await fetchHandBatchImages(toFetch);
