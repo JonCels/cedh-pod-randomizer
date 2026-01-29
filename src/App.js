@@ -1609,6 +1609,10 @@ Commander Name`}
                           : opponentCard?.name && imageCache[opponentCard?.name]
                             ? [imageCache[opponentCard?.name]]
                             : [];
+                        const opponentTopImage = opponentImages[0];
+                        const opponentLibrary = opponentLibraries[selectionKey];
+                        const opponentError = opponentDeckErrors[selectionKey];
+                        const canDrawOpponent = Boolean(opponentLibrary) && !opponentDeckLoading;
                         const parts = getNameParts(commander.name);
                         const isPartner = parts.length > 1;
                         const cacheImages = imageCache[commander.name];
@@ -1709,6 +1713,44 @@ Commander Name`}
                                 {deckLinksError && !deckLinks[commander.name] && (
                                   <span className="status error">Decklist unavailable</span>
                                 )}
+                                <div className="opponent-draw">
+                                  <button
+                                    type="button"
+                                    className="opponent-draw-btn"
+                                    onClick={() => drawOpponentCard(selectionKey)}
+                                    disabled={!canDrawOpponent}
+                                    title={
+                                      opponentError
+                                        ? 'Deck unavailable'
+                                        : canDrawOpponent
+                                          ? 'Draw a card'
+                                          : 'Loading deck'
+                                    }
+                                    aria-label={`Draw a card from seat ${seat}`}
+                                  >
+                                    <DrawIcon
+                                      sx={{
+                                        mr: 0.35,
+                                        fontSize: '1rem',
+                                        verticalAlign: 'middle',
+                                      }}
+                                    />
+                                    Draw
+                                  </button>
+                                  {opponentCard && (
+                                    opponentTopImage ? (
+                                      <img
+                                        src={opponentTopImage}
+                                        alt={opponentCard.name}
+                                        loading="lazy"
+                                      />
+                                    ) : (
+                                      <div className="opponent-draw__placeholder">
+                                        {opponentCard.name}
+                                      </div>
+                                    )
+                                  )}
+                                </div>
                               </div>
                             </div>
                           </Grid>
