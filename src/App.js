@@ -1649,74 +1649,81 @@ Commander Name`}
                             xs={12}
                             component="li"
                             key={`${commander.id || commander.name}-${seat}`}
-                            className={`commander-card${images.length ? ' has-bg' : ''}`}
-                            style={
-                              !hasSplit && topImage
-                                ? {
-                                    backgroundImage: `url(${topImage})`,
-                                    backgroundPosition: 'center 12.5%',
-                                  }
-                                : undefined
-                            }
+                            className="selection-row"
                           >
-                            {hasSplit && (
-                              <div className="card-art-split">
-                                {images.slice(0, 2).map((url, artIdx) => (
-                                  <div
-                                    key={`${commander.name}-art-${artIdx}`}
-                                    className="card-art"
-                                    style={{
-                                      backgroundImage: `url(${url})`,
-                                    }}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                            <div className="commander-card__layout">
-                              <div className="commander-card__content">
-                                <div className="name">
-                                  Seat {seat}: {commander.name}
+                            <Grid container spacing={1.25} alignItems="stretch">
+                              <Grid
+                                item
+                                xs={12}
+                                md={9}
+                                className={`commander-card${images.length ? ' has-bg' : ''}`}
+                                style={
+                                  !hasSplit && topImage
+                                    ? {
+                                        backgroundImage: `url(${topImage})`,
+                                        backgroundPosition: 'center 12.5%',
+                                      }
+                                    : undefined
+                                }
+                              >
+                                {hasSplit && (
+                                  <div className="card-art-split">
+                                    {images.slice(0, 2).map((url, artIdx) => (
+                                      <div
+                                        key={`${commander.name}-art-${artIdx}`}
+                                        className="card-art"
+                                        style={{
+                                          backgroundImage: `url(${url})`,
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                                <div className="commander-card__content">
+                                  <div className="name">
+                                    Seat {seat}: {commander.name}
+                                  </div>
+                                  <div className="meta chips">
+                                    <span>
+                                      Meta: {formatMetaSharePct(commander)}
+                                    </span>
+                                    <span>Entries: {commander.stats?.count ?? 'N/A'}</span>
+                                    <span>
+                                      Conv: {formatConversionPct(commander)}
+                                    </span>
+                                    <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
+                                  </div>
+                                  <div className="deck-link-row">
+                                    {deckLinksLoading && !deckLinks[commander.name] && (
+                                      <span className="status subtle">Finding a deck...</span>
+                                    )}
+                                    {deckEntry?.decklist && (
+                                      <a
+                                        href={deckEntry.decklist}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="deck-link"
+                                      >
+                                        View decklist
+                                        {Number.isFinite(deckEntry.standing) && (
+                                          <>
+                                            {' '}
+                                            (placed {deckEntry.standing}
+                                            {deckEntry.tournamentName
+                                              ? ` @ ${deckEntry.tournamentName}`
+                                              : ''}
+                                            )
+                                          </>
+                                        )}
+                                      </a>
+                                    )}
+                                    {deckLinksError && !deckLinks[commander.name] && (
+                                      <span className="status error">Decklist unavailable</span>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="meta chips">
-                                  <span>
-                                    Meta: {formatMetaSharePct(commander)}
-                                  </span>
-                                  <span>Entries: {commander.stats?.count ?? 'N/A'}</span>
-                                  <span>
-                                    Conv: {formatConversionPct(commander)}
-                                  </span>
-                                  <span>Top cuts: {commander.stats?.topCuts ?? 'N/A'}</span>
-                                </div>
-                                <div className="deck-link-row">
-                                  {deckLinksLoading && !deckLinks[commander.name] && (
-                                    <span className="status subtle">Finding a deck...</span>
-                                  )}
-                                  {deckEntry?.decklist && (
-                                    <a
-                                      href={deckEntry.decklist}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="deck-link"
-                                    >
-                                      View decklist
-                                      {Number.isFinite(deckEntry.standing) && (
-                                        <>
-                                          {' '}
-                                          (placed {deckEntry.standing}
-                                          {deckEntry.tournamentName
-                                            ? ` @ ${deckEntry.tournamentName}`
-                                            : ''}
-                                          )
-                                        </>
-                                      )}
-                                    </a>
-                                  )}
-                                  {deckLinksError && !deckLinks[commander.name] && (
-                                    <span className="status error">Decklist unavailable</span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="commander-card__aside">
+                              </Grid>
+                              <Grid item xs={12} md={3} className="opponent-draw-panel">
                                 <div className="opponent-draw">
                                   <button
                                     type="button"
@@ -1755,8 +1762,8 @@ Commander Name`}
                                     )
                                   )}
                                 </div>
-                              </div>
-                            </div>
+                              </Grid>
+                            </Grid>
                           </Grid>
                         );
                       });

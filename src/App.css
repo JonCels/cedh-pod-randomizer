@@ -445,20 +445,14 @@ body {
   width: 100%;
 }
 
-.commander-card__layout {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: flex-end;
-  gap: 0.9rem;
-  width: 100%;
-  margin-top: auto;
+.selection-row {
+  list-style: none;
 }
 
-.commander-card__aside {
+.opponent-draw-panel {
   display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: center;
 }
 
 .deck-link-row {
