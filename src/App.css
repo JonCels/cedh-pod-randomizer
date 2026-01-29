@@ -443,7 +443,22 @@ body {
   align-items: flex-start;
   gap: 0.5rem;
   width: 100%;
-  margin-top: auto; /* pins content to bottom of card */
+}
+
+.commander-card__layout {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 0.9rem;
+  width: 100%;
+  margin-top: auto;
+}
+
+.commander-card__aside {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
 }
 
 .deck-link-row {
@@ -479,7 +494,6 @@ body {
 }
 
 .opponent-draw {
-  margin-left: auto;
   display: flex;
   align-items: center;
   justify-content: flex-end;
