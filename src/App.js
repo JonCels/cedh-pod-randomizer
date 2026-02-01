@@ -250,7 +250,7 @@ function App() {
         .filter(Boolean);
       const toFetch = names.filter((n) => !imageCache[n]);
       if (!toFetch.length) return;
-      const batch = await fetchHandBatchImages(toFetch);
+      const batch = await fetchOpponentBatchImages(toFetch);
       const results = Object.entries(batch).map(([name, urls]) => ({ name, urls }));
       setImageCache((prev) => {
         const next = { ...prev };
@@ -542,18 +542,18 @@ function App() {
         (card?.card_faces || [])
           .map(
             (face) =>
-              face?.image_uris?.small ||
               face?.image_uris?.normal ||
               face?.image_uris?.large ||
               face?.image_uris?.art_crop ||
+              face?.image_uris?.small ||
               null
           )
           .filter(Boolean) || [];
       const primaryImage =
-        card?.image_uris?.small ||
         card?.image_uris?.normal ||
         card?.image_uris?.large ||
         card?.image_uris?.art_crop ||
+        card?.image_uris?.small ||
         null;
 
       if (faceImages.length) return [faceImages[0]];
@@ -592,18 +592,18 @@ function App() {
           (card?.card_faces || [])
             .map(
               (face) =>
-                face?.image_uris?.small ||
                 face?.image_uris?.normal ||
                 face?.image_uris?.large ||
                 face?.image_uris?.art_crop ||
+                face?.image_uris?.small ||
                 null
             )
             .filter(Boolean) || [];
         const primaryImage =
-          card?.image_uris?.small ||
           card?.image_uris?.normal ||
           card?.image_uris?.large ||
           card?.image_uris?.art_crop ||
+          card?.image_uris?.small ||
           null;
         const urls = faceImages.length ? [faceImages[0]] : primaryImage ? [primaryImage] : [];
         if (urls.length) map[name] = urls;
@@ -612,6 +612,56 @@ function App() {
     } catch (e) {
       // eslint-disable-next-line no-console
       console.warn('Scryfall batch hand fetch failed', e);
+      return {};
+    }
+  };
+
+  const fetchOpponentBatchImages = async (names = []) => {
+    const unique = Array.from(new Set(names.filter(Boolean)));
+    if (!unique.length) return {};
+    const queries = unique.map((n) => ({
+      key: n,
+      query: (isDoubleFaced(n) ? n.split('//')[0] : n.split('/')[0]).trim(),
+    }));
+    try {
+      const body = {
+        identifiers: queries.map((q) => ({ name: q.query })),
+      };
+      const res = await fetch('https://api.scryfall.com/cards/collection', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) return {};
+      const data = await res.json();
+      const map = {};
+      (data?.data || []).forEach((card, idx) => {
+        const name = queries[idx]?.key || card?.name;
+        if (!name) return;
+        const faceImages =
+          (card?.card_faces || [])
+            .map(
+              (face) =>
+                face?.image_uris?.normal ||
+                face?.image_uris?.large ||
+                face?.image_uris?.art_crop ||
+                face?.image_uris?.small ||
+                null
+            )
+            .filter(Boolean) || [];
+        const primaryImage =
+          card?.image_uris?.normal ||
+          card?.image_uris?.large ||
+          card?.image_uris?.art_crop ||
+          card?.image_uris?.small ||
+          null;
+        const urls = faceImages.length ? [faceImages[0]] : primaryImage ? [primaryImage] : [];
+        if (urls.length) map[name] = urls;
+      });
+      return map;
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.warn('Scryfall batch opponent fetch failed', e);
       return {};
     }
   };
