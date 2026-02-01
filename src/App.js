@@ -1513,6 +1513,11 @@ Commander Name`}
                         <Grid item xs={12}>
                             <p className="note">Your hand:</p>
                         </Grid>
+                        {userLibrary?.cards?.length === 0 && (
+                          <Grid item xs={12}>
+                            <div className="deck-empty-label">Empty</div>
+                          </Grid>
+                        )}
                         {showGlobalLoading ? (
                           <Grid item xs={12}>
                             <div className="hand-loading">
@@ -1755,6 +1760,9 @@ Commander Name`}
                                       />
                                       Draw
                                     </button>
+                                    {opponentLibrary?.cards?.length === 0 && (
+                                      <div className="deck-empty-label">Empty</div>
+                                    )}
                                   </div>
                                 </div>
                               )}
