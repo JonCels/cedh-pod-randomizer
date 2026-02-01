@@ -542,18 +542,18 @@ function App() {
         (card?.card_faces || [])
           .map(
             (face) =>
+              face?.image_uris?.small ||
               face?.image_uris?.normal ||
               face?.image_uris?.large ||
               face?.image_uris?.art_crop ||
-              face?.image_uris?.small ||
               null
           )
           .filter(Boolean) || [];
       const primaryImage =
+        card?.image_uris?.small ||
         card?.image_uris?.normal ||
         card?.image_uris?.large ||
         card?.image_uris?.art_crop ||
-        card?.image_uris?.small ||
         null;
 
       if (faceImages.length) return [faceImages[0]];
@@ -592,18 +592,18 @@ function App() {
           (card?.card_faces || [])
             .map(
               (face) =>
+                face?.image_uris?.small ||
                 face?.image_uris?.normal ||
                 face?.image_uris?.large ||
                 face?.image_uris?.art_crop ||
-                face?.image_uris?.small ||
                 null
             )
             .filter(Boolean) || [];
         const primaryImage =
+          card?.image_uris?.small ||
           card?.image_uris?.normal ||
           card?.image_uris?.large ||
           card?.image_uris?.art_crop ||
-          card?.image_uris?.small ||
           null;
         const urls = faceImages.length ? [faceImages[0]] : primaryImage ? [primaryImage] : [];
         if (urls.length) map[name] = urls;
