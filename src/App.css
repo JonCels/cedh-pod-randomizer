@@ -501,7 +501,7 @@ body {
 .opponent-draw-card img,
 .opponent-draw-card .opponent-draw__placeholder {
   width: 100%;
-  min-height: 150px;
+  min-height: 164px;
   border-radius: 6px;
   border: 1px solid #1f2937;
   background: rgba(15, 23, 42, 0.6);
