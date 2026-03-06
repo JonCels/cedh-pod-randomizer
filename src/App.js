@@ -1775,6 +1775,7 @@ Commander Name`}
                                     <div className="opponent-draw-card">
                                       <img
                                         src={opponentTopImage || defaultCardBackImage}
+                                        className={!opponentTopImage ? 'opponent-draw__card-back' : undefined}
                                         alt={opponentCard?.name || 'Face-down card'}
                                         loading="lazy"
                                       />
