@@ -71,7 +71,7 @@ function App() {
   const [showGlobalLoading, setShowGlobalLoading] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
-  const defaultCardBackImage = '/Magic_card_back.webp';
+  const [defaultCardBackImage, setDefaultCardBackImage] = useState('/Magic_card_back.webp');
 
   const getNameParts = (name) => {
     if (!name) return [];
@@ -263,6 +263,47 @@ function App() {
     };
     fetchOpponentDrawImages();
   }, [opponentDraws, imageCache]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchDefaultCardBackImage = async () => {
+      try {
+        const res = await fetch('https://api.scryfall.com/cards/pvan/102');
+        if (!res.ok) return;
+        const card = await res.json();
+        const faceUris = (card?.card_faces || [])
+          .map(
+            (face) =>
+              face?.image_uris?.small ||
+              face?.image_uris?.normal ||
+              face?.image_uris?.large ||
+              face?.image_uris?.art_crop ||
+              null
+          )
+          .filter(Boolean);
+        const backFaceImage = faceUris.find((url) => url.includes('/back/'));
+        const fallbackImage =
+          card?.image_uris?.small ||
+          card?.image_uris?.normal ||
+          card?.image_uris?.large ||
+          card?.image_uris?.art_crop ||
+          null;
+        const imageUrl = backFaceImage || faceUris[1] || faceUris[0] || fallbackImage;
+        if (!cancelled && imageUrl) {
+          setDefaultCardBackImage(imageUrl);
+        }
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('Scryfall default card back fetch failed', e);
+      }
+    };
+
+    fetchDefaultCardBackImage();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const loadCommanders = async (activeFilters = filters) => {
     setIsLoading(true);
