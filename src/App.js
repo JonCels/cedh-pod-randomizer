@@ -71,7 +71,6 @@ function App() {
   const [showGlobalLoading, setShowGlobalLoading] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
-  const [defaultCardBackImage, setDefaultCardBackImage] = useState('/Magic_card_back.webp');
 
   const getNameParts = (name) => {
     if (!name) return [];
@@ -263,47 +262,6 @@ function App() {
     };
     fetchOpponentDrawImages();
   }, [opponentDraws, imageCache]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchDefaultCardBackImage = async () => {
-      try {
-        const res = await fetch('https://api.scryfall.com/cards/pvan/102');
-        if (!res.ok) return;
-        const card = await res.json();
-        const faceUris = (card?.card_faces || [])
-          .map(
-            (face) =>
-              face?.image_uris?.small ||
-              face?.image_uris?.normal ||
-              face?.image_uris?.large ||
-              face?.image_uris?.art_crop ||
-              null
-          )
-          .filter(Boolean);
-        const backFaceImage = faceUris.find((url) => url.includes('/back/'));
-        const fallbackImage =
-          card?.image_uris?.small ||
-          card?.image_uris?.normal ||
-          card?.image_uris?.large ||
-          card?.image_uris?.art_crop ||
-          null;
-        const imageUrl = backFaceImage || faceUris[1] || faceUris[0] || fallbackImage;
-        if (!cancelled && imageUrl) {
-          setDefaultCardBackImage(imageUrl);
-        }
-      } catch (e) {
-        // eslint-disable-next-line no-console
-        console.warn('Scryfall default card back fetch failed', e);
-      }
-    };
-
-    fetchDefaultCardBackImage();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const loadCommanders = async (activeFilters = filters) => {
     setIsLoading(true);
@@ -833,7 +791,8 @@ function App() {
           const loader = getDeckLoader(source);
           try {
             const { library } = await loader(deckUrl);
-            return { key, library };
+            const draw = library.drawRandom();
+            return { key, library: draw.library, card: draw.hand[0] };
           } catch (err) {
             return { key, error: err.message || 'Failed to load deck' };
           }
@@ -842,13 +801,15 @@ function App() {
 
       if (cancelled) return;
       const libs = {};
+      const draws = {};
       const errors = {};
       results.forEach((result) => {
         if (result.library) libs[result.key] = result.library;
+        if (result.card) draws[result.key] = result.card;
         if (result.error) errors[result.key] = result.error;
       });
       setOpponentLibraries(libs);
-      setOpponentDraws({});
+      setOpponentDraws(draws);
       setOpponentDeckErrors(errors);
       setOpponentDeckLoading(false);
     };
@@ -1810,16 +1771,21 @@ Commander Name`}
                                   )}
                                 </div>
                               </div>
-                              {deckEntry?.decklist && (
+                              {opponentCard && (
                                 <div className="commander-card__aside">
                                   <div className="opponent-draw-panel">
                                     <div className="opponent-draw-card">
-                                      <img
-                                        src={opponentTopImage || defaultCardBackImage}
-                                        className={!opponentTopImage ? 'opponent-draw__card-back' : undefined}
-                                        alt={opponentCard?.name || 'Face-down card'}
-                                        loading="lazy"
-                                      />
+                                      {opponentTopImage ? (
+                                        <img
+                                          src={opponentTopImage}
+                                          alt={opponentCard.name}
+                                          loading="lazy"
+                                        />
+                                      ) : (
+                                        <div className="opponent-draw__placeholder">
+                                          {opponentCard.name}
+                                        </div>
+                                      )}
                                     </div>
                                     <button
                                       type="button"
