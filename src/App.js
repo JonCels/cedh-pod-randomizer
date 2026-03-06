@@ -71,6 +71,7 @@ function App() {
   const [showGlobalLoading, setShowGlobalLoading] = useState(false);
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
+  const defaultCardBackImage = '/Magic_card_back.webp';
 
   const getNameParts = (name) => {
     if (!name) return [];
@@ -791,8 +792,7 @@ function App() {
           const loader = getDeckLoader(source);
           try {
             const { library } = await loader(deckUrl);
-            const draw = library.drawRandom();
-            return { key, library: draw.library, card: draw.hand[0] };
+            return { key, library };
           } catch (err) {
             return { key, error: err.message || 'Failed to load deck' };
           }
@@ -801,15 +801,13 @@ function App() {
 
       if (cancelled) return;
       const libs = {};
-      const draws = {};
       const errors = {};
       results.forEach((result) => {
         if (result.library) libs[result.key] = result.library;
-        if (result.card) draws[result.key] = result.card;
         if (result.error) errors[result.key] = result.error;
       });
       setOpponentLibraries(libs);
-      setOpponentDraws(draws);
+      setOpponentDraws({});
       setOpponentDeckErrors(errors);
       setOpponentDeckLoading(false);
     };
@@ -1771,21 +1769,15 @@ Commander Name`}
                                   )}
                                 </div>
                               </div>
-                              {opponentCard && (
+                              {deckEntry?.decklist && (
                                 <div className="commander-card__aside">
                                   <div className="opponent-draw-panel">
                                     <div className="opponent-draw-card">
-                                      {opponentTopImage ? (
-                                        <img
-                                          src={opponentTopImage}
-                                          alt={opponentCard.name}
-                                          loading="lazy"
-                                        />
-                                      ) : (
-                                        <div className="opponent-draw__placeholder">
-                                          {opponentCard.name}
-                                        </div>
-                                      )}
+                                      <img
+                                        src={opponentTopImage || defaultCardBackImage}
+                                        alt={opponentCard?.name || 'Face-down card'}
+                                        loading="lazy"
+                                      />
                                     </div>
                                     <button
                                       type="button"
